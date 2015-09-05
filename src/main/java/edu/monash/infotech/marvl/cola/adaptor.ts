@@ -1,4 +1,4 @@
-///<reference path="layout.ts"/>
+///<reference path="Layout.java"/>
 
 module cola {
     export class LayoutAdaptor extends Layout {
