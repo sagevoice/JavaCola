@@ -1,7 +1,9 @@
 package edu.monash.infotech.marvl.cola.geom;
 
+import edu.monash.infotech.marvl.cola.vpsc.Rectangle;
 import edu.monash.infotech.marvl.cola.TriFunction;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -33,8 +35,8 @@ public class Geom {
      * @param S array of points
      * @return the convex hull as an array of points
      */
-    public static Point[] ConvexHull(Point[] S) {
-        Point[] P = Arrays.stream(S.clone()).sorted((a, b) -> a.x != b.x ? (int)(b.x - a.x) : (int)(b.y - a.y)).toArray();
+    public static ArrayList<Point> ConvexHull(Point[] S) {
+        Point[] P = (Point[])Arrays.stream(S.clone()).sorted((a, b) -> a.x != b.x ? (int)(b.x - a.x) : (int)(b.y - a.y)).toArray();
         int n = S.length, i;
         int minmin = 0;
         double xmin = P[0].x;
@@ -42,11 +44,11 @@ public class Geom {
             if (P[i].x != xmin) break;
         }
         int minmax = i - 1;
-        Point[] H = {};
-        H.push(P[minmin]); // push minmin point onto stack
+        ArrayList<Point> H = new ArrayList<>();
+        H.add(P[minmin]); // push minmin point onto stack
         if (minmax == n - 1) { // degenerate case: all x-coords == xmin
             if (P[minmax].y != P[minmin].y) // a  nontrivial segment
-                H.push(P[minmax]);
+                H.add(P[minmax]);
         } else {
             // Get the indices of points with max x-coord and min|max y-coord
             int maxmin, maxmax = n - 1;
@@ -62,41 +64,41 @@ public class Geom {
                 if (0 <= isLeft(P[minmin], P[maxmin], P[i]) && i < maxmin)
                     continue; // ignore P[i] above or on the lower line
 
-                while (1 < H.length) // there are at least 2 points on the stack
+                while (1 < H.size()) // there are at least 2 points on the stack
                 {
                     // test if  P[i] is left of the line at the stack top
-                    if (0 < isLeft(H[H.length - 2], H[H.length - 1], P[i])) {
+                    if (0 < isLeft(H.get(H.size() - 2), H.get(H.size() - 1), P[i])) {
                         break; // P[i] is a new hull  vertex
                     } else {
-                        H.pop(); // pop top point off  stack
+                        H.remove(H.size() -1); // pop top point off  stack
                     }
                 }
                 if (i != minmin) {
-                    H.push(P[i]);
+                    H.add(P[i]);
                 }
             }
 
             // Next, compute the upper hull on the stack H above the bottom hull
             if (maxmax != maxmin) // if  distinct xmax points
-                H.push(P[maxmax]); // push maxmax point onto stack
-            int bot = H.length; // the bottom point of the upper hull stack
+                H.add(P[maxmax]); // push maxmax point onto stack
+            int bot = H.size(); // the bottom point of the upper hull stack
             i = maxmin;
             while (--i >= minmax) {
                 // the upper line joins P[maxmax]  with P[minmax]
                 if (isLeft(P[maxmax], P[minmax], P[i]) >= 0 && i > minmax)
                     continue; // ignore P[i] below or on the upper line
 
-                while (H.length > bot) // at least 2 points on the upper stack
+                while (H.size() > bot) // at least 2 points on the upper stack
                 {
                     // test if  P[i] is left of the line at the stack top
-                    if (isLeft(H[H.length - 2], H[H.length - 1], P[i]) > 0) {
+                    if (isLeft(H.get(H.size() - 2), H.get(H.size() - 1), P[i]) > 0) {
                         break; // P[i] is a new hull  vertex
                     } else {
-                        H.pop(); // pop top point off  stack
+                        H.remove(H.size() - 1); // pop top point off  stack
                     }
                 }
                 if (i != minmin) {
-                    H.push(P[i]); // push P[i] onto stack
+                    H.add(P[i]); // push P[i] onto stack
                 }
             }
         }
@@ -106,8 +108,8 @@ public class Geom {
     // apply f to the points in P in clockwise order around the point p
     public static void clockwiseRadialSweep(final Point p, final Point[] P, final Function f) {
         Arrays.stream(P.clone()).sorted(
-            (a, b) -> (int)(Math.atan2(a.y - p.y, a.x - p.x) - Math.atan2(b.y - p.y, b.x - p.x))
-            ).forEach((a) -> f.apply(a));
+                (a, b) -> (int)(Math.atan2(a.y - p.y, a.x - p.x) - Math.atan2(b.y - p.y, b.x - p.x))
+        ).forEach((a) -> f.apply(a));
     }
 
     public static PolyPoint nextPolyPoint(PolyPoint p, PolyPoint[] ps) {
@@ -311,16 +313,18 @@ public class Geom {
     }
 
 
-    public static Point[] intersects(LineSegment l, Point[] P) {
-        Point[] ints = {};
+    public static ArrayList<Point> intersects(final LineSegment l, final Point[] P) {
+        final ArrayList<Point> ints = new ArrayList<>();
         for (int i = 1, n = P.length; i < n; ++i) {
-            Point intersection = Rectangle.lineIntersection(
+            final Point intersection = Rectangle.lineIntersection(
                 l.x1, l.y1,
                 l.x2, l.y2,
                 P[i - 1].x, P[i - 1].y,
                 P[i].x, P[i].y
                 );
-            if (null != intersection) ints.push(intersection);
+            if (null != intersection) {
+                ints.add(intersection);
+            }
         }
         return ints;
     }
@@ -379,7 +383,7 @@ public class Geom {
         }
         for (int i = 1, n = p.length; i < n; ++i) {
             Point v = p[i], u = p[i - 1];
-            if (intersects(new LineSegment(u.x, u.y, v.x, v.y), q).length > 0) {
+            if (intersects(new LineSegment(u.x, u.y, v.x, v.y), q).size() > 0) {
                 return true;
             }
         }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 public class LRTangent {
+
     public int ltan;
     public int rtan;
 }

@@ -2,8 +2,12 @@ package edu.monash.infotech.marvl.cola.geom;
 
 import lombok.AllArgsConstructor;
 
+import java.util.ArrayList;
+
 @AllArgsConstructor
 class VisibilityGraph {
-    public VisibilityVertex[] V = {};
-    public VisibilityEdge[] E = {};
+
+    public ArrayList<VisibilityVertex> V = new ArrayList<>();
+    public ArrayList<VisibilityEdge>   E = new ArrayList<>();
+
 }

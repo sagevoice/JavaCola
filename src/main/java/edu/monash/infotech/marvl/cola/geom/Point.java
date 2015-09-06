@@ -1,6 +1,7 @@
 package edu.monash.infotech.marvl.cola.geom;
 
 public class Point {
-    double x;
-    double y;
+
+    public double x;
+    public double y;
 }

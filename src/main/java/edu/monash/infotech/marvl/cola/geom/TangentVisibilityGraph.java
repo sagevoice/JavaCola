@@ -1,30 +1,32 @@
 package edu.monash.infotech.marvl.cola.geom;
 
+import java.util.ArrayList;
+
 public class TangentVisibilityGraph extends VisibilityGraph {
     public TVGPoint[][] P;
 
     TangentVisibilityGraph(final TVGPoint[][] P) {
-        this.P = P;
-        int n = P.length;
+        super();
+        this.P = P.clone();
+        final int n = P.length;
         for (int i = 0; i < n; i++) {
-            TVGPoint[] p = P[i];
+            final TVGPoint[] p = P[i];
             for (int j = 0; j < p.length; ++j) {
-                TVGPoint pj = p[j];
-                VisibilityVertex vv = new VisibilityVertex(this.V.length, i, j, pj);
-                this.V.push(vv);
+                final TVGPoint pj = p[j];
+                VisibilityVertex vv = new VisibilityVertex(this.V.size(), i, j, pj);
+                this.V.add(vv);
                 if (0 < j) {
-                    this.E.push(new VisibilityEdge(p[j - 1].vv, vv));
+                    this.E.add(new VisibilityEdge(p[j - 1].vv, vv));
                 }
             }
         }
         for (int i = 0; i < n - 1; i++) {
-            TVGPoint[] Pi = P[i];
+            final TVGPoint[] Pi = P[i];
             for (int j = i + 1; j < n; j++) {
-                TVGPoint[] Pj = P[j];
-                BiTangents t = Geom.tangents(Pi, Pj);
-                for (var q in t) {
-                    BiTangent c = t[q];
-                    TVGPoint source = Pi[c.t1], target = Pj[c.t2];
+                final TVGPoint[] Pj = P[j];
+                final BiTangents t = Geom.tangents(Pi, Pj);
+                for (final BiTangent c : t.all) {
+                    final TVGPoint source = Pi[c.t1], target = Pj[c.t2];
                     this.addEdgeIfVisible(source, target, i, j);
                 }
             }
@@ -32,24 +34,25 @@ public class TangentVisibilityGraph extends VisibilityGraph {
     }
 
     TangentVisibilityGraph(final TVGPoint[][] P, final VisibilityGraph g0) {
+        super((ArrayList<VisibilityVertex>)g0.V.clone(), (ArrayList<VisibilityEdge>)g0.E.clone());
         this.P = P;
-        this.V = g0.V.clone();
-        this.E = g0.E.clone();
     }
 
     public void addEdgeIfVisible(TVGPoint u, TVGPoint v, int i1, int i2) {
         if (!this.intersectsPolys(new LineSegment(u.x, u.y, v.x, v.y), i1, i2)) {
-            this.E.push(new VisibilityEdge(u.vv, v.vv));
+            this.E.add(new VisibilityEdge(u.vv, v.vv));
         }
     }
 
-    public VisibilityVertex addPoint(TVGPoint p, int i1) {
-        int n = this.P.length;
-        this.V.push(new VisibilityVertex(this.V.length, n, 0, p));
+    public VisibilityVertex addPoint(final TVGPoint p, final int i1) {
+        final int n = this.P.length;
+        this.V.add(new VisibilityVertex(this.V.size(), n, 0, p));
         for (int i = 0; i < n; ++i) {
-            if (i == i1) continue;
-            TVGPoint[] poly = this.P[i];
-            LRTangent t = Geom.tangent_PointPolyC(p, poly);
+            if (i == i1) {
+                continue;
+            }
+            final TVGPoint[] poly = this.P[i];
+            final LRTangent t = Geom.tangent_PointPolyC(p, poly);
             this.addEdgeIfVisible(p, poly[t.ltan], i1, i);
             this.addEdgeIfVisible(p, poly[t.rtan], i1, i);
         }
@@ -58,7 +61,7 @@ public class TangentVisibilityGraph extends VisibilityGraph {
 
     private boolean intersectsPolys(LineSegment l, int i1, int i2) {
         for (int i = 0, n = this.P.length; i < n; ++i) {
-            if (i != i1 && i != i2 && Geom.intersects(l, this.P[i]).length > 0) {
+            if (i != i1 && i != i2 && 0 < Geom.intersects(l, this.P[i]).length) {
                 return true;
             }
         }
