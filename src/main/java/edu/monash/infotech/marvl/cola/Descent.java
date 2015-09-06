@@ -1,5 +1,6 @@
 package edu.monash.infotech.marvl.cola;
 
+import edu.monash.infotech.marvl.cola.vpsc.Projection;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -33,11 +34,11 @@ public class Descent {
     /**
      * dimensionality
      */
-    public int       k;
+    public int          k;
     /**
      * number of data-points / nodes / size of vectors/matrices
      */
-    public int       n;
+    public int          n;
 
     public Locks locks;
 
@@ -71,7 +72,7 @@ public class Descent {
     public double[][] D;
     public double[][] G;
 
-    public Descent(final double[][] x, final double[][] D){
+    public Descent(final double[][] x, final double[][] D) {
         this(x, D, null);
     }
 
