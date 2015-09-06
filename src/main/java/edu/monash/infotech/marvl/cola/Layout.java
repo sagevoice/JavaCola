@@ -1,29 +1,33 @@
 ﻿package edu.monash.infotech.marvl.cola;
+
+import edu.monash.infotech.marvl.cola.vpsc.IndexedVariable;
+
 /**
  * Main interface to cola layout.
  * @class Layout
  */
 public class Layout {
-    private int[] _canvasSize = {1, 1};
-    private double _linkDistance = 20;
-    private double _defaultNodeSize = 10;
+
+    private int[]                 _canvasSize           = {1, 1};
+    private double                _linkDistance         = 20;
+    private double                _defaultNodeSize      = 10;
     private ILinkLengthCalculator _linkLengthCalculator = null;
-    private boolean _avoidOverlaps = false;
-    private boolean _handleDisconnected = true;
+    private boolean               _avoidOverlaps        = false;
+    private boolean               _handleDisconnected   = true;
     private double _alpha;
     private double _lastStress;
-    private boolean _running = false;
-    private Node[] _nodes = {};
-    private Group[] _groups = {};
-    private IndexedVariable[] _variables = {};
-    private Group _rootGroup = null;
-    private Link[] _links = {};
-    private Constraint[] _constraints = {};
-    private double[][] _distanceMatrix = null;
-    private Descent _descent = null;
-    private _directedLinkConstraints = null;
+    private boolean           _running        = false;
+    private Node[]            _nodes          = {};
+    private Group[]           _groups         = {};
+    private IndexedVariable[] _variables      = {};
+    private Group             _rootGroup      = null;
+    private Link[]            _links          = {};
+    private Constraint[]      _constraints    = {};
+    private double[][]        _distanceMatrix = null;
+    private Descent           _descent        = null;
+    private _directedLinkConstraints=null;
     private double _threshold = 0.01;
-    private _visibilityGraph = null;
+    private _visibilityGraph=null;
     private double _groupCompactness = 1e-6;
 
     // sub-class and override this property to replace with a more sophisticated eventing mechanism

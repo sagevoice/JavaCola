@@ -1,19 +1,5 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
-export interface Leaf {
-    bounds: Rectangle;
-    variable: Variable;
-}
-
-export interface Group {
-    bounds: Rectangle;
-    padding: number;
-    stiffness: number;
-    leaves: Leaf[];
-    groups: Group[];
-    minVar: Variable;
-    maxVar: Variable;
-}
 
 export function computeGroupBounds(g: Group): Rectangle {
     g.bounds = typeof g.leaves !== "undefined" ?
@@ -173,20 +159,6 @@ export function makeEdgeTo(s: { x: number; y: number }, target: Rectangle, ah: n
     return { x: ti.x - ah * dx / l, y: ti.y - ah * dy / l };
 }
 
-class Node {
-    prev: cola.vpsc.RBTree<Node>;
-    next: RBTree<Node>;
-
-    constructor(public v: Variable, public r: Rectangle, public pos: number) {
-        this.prev = makeRBTree();
-        this.next = makeRBTree();
-    }
-}
-
-class Event {
-    constructor(public isOpen: boolean, public v: Node, public pos: number) {}
-}
-
 function compareEvents(a: Event, b: Event): number {
     if (a.pos > b.pos) {
         return 1;
@@ -205,14 +177,6 @@ function makeRBTree(): RBTree<Node> {
     return new RBTree<Node>((a, b) => a.pos - b.pos);
 }
 
-interface RectAccessors {
-    getCentre: (r: Rectangle) => number;
-    getOpen: (r: Rectangle) => number;
-    getClose: (r: Rectangle) => number;
-    getSize: (r: Rectangle) => number;
-    makeRect: (open: number, close: number, center: number, size: number) => Rectangle;
-    findNeighbours: (v: Node, scanline: RBTree<Node>) => void;
-}
 
 var xRect: RectAccessors = {
     getCentre: r=> r.cx(),
@@ -377,175 +341,4 @@ export function removeOverlaps(rs: Rectangle[]): void {
     solver = new vpsc.Solver(vs, cs);
     solver.solve();
     vs.forEach((v, i) => rs[i].setYCentre(v.position()));
-}
-
-export interface GraphNode extends Leaf {
-    fixed: boolean;
-    width: number;
-    height: number;
-    x: number;
-    y: number;
-    px: number;
-    py: number;
-}
-
-export class IndexedVariable extends Variable {
-    constructor(public index: number, w: number) {
-        super(0, w);
-    }
-}
-
-export class Projection {
-    private xConstraints: Constraint[];
-    private yConstraints: Constraint[];
-    private variables: Variable[];
-
-    constructor(private nodes: GraphNode[],
-        private groups: Group[],
-        private rootGroup: Group = null,
-        constraints: any[]= null,
-        private avoidOverlaps: boolean = false)
-    {
-        this.variables = nodes.map((v, i) => {
-            return v.variable = new IndexedVariable(i, 1);
-        });
-
-        if (constraints) this.createConstraints(constraints);
-
-        if (avoidOverlaps && rootGroup && typeof rootGroup.groups !== 'undefined') {
-            nodes.forEach(v => {
-                if (!v.width || !v.height)
-                {
-                    //If undefined, default to nothing
-                    v.bounds = new vpsc.Rectangle(v.x, v.x, v.y, v.y);
-                    return;
-                }
-                var w2 = v.width / 2, h2 = v.height / 2;
-                v.bounds = new vpsc.Rectangle(v.x - w2, v.x + w2, v.y - h2, v.y + h2);
-            });
-            computeGroupBounds(rootGroup);
-            var i = nodes.length;
-            groups.forEach(g => {
-                this.variables[i] = g.minVar = new IndexedVariable(i++, typeof g.stiffness !== "undefined" ? g.stiffness : 0.01);
-                this.variables[i] = g.maxVar = new IndexedVariable(i++, typeof g.stiffness !== "undefined" ? g.stiffness : 0.01);
-            });
-        }
-    }
-
-
-    private createSeparation(c: any) : Constraint {
-        return new Constraint(
-            this.nodes[c.left].variable,
-            this.nodes[c.right].variable,
-            c.gap,
-            typeof c.equality !== "undefined" ? c.equality : false);
-    }
-
-    private makeFeasible(c: any) {
-        if (!this.avoidOverlaps) return;
-        var axis = 'x', dim = 'width';
-        if (c.axis === 'x') axis = 'y', dim = 'height';
-        var vs: GraphNode[] = c.offsets.map(o => this.nodes[o.node]).sort((a, b) => a[axis] - b[axis]);
-        var p: GraphNode = null;
-        vs.forEach(v => {
-            if (p) v[axis] = p[axis] + p[dim] + 1
-            p = v;
-        });
-    }
-
-    private createAlignment(c: any) {
-        var u = this.nodes[c.offsets[0].node].variable;
-        this.makeFeasible(c);
-        var cs = c.axis === 'x' ? this.xConstraints : this.yConstraints;
-        c.offsets.slice(1).forEach(o => {
-            var v = this.nodes[o.node].variable;
-            cs.push(new Constraint(u, v, o.offset, true));
-        });
-    }
-
-    private createConstraints(constraints: any[]) {
-        var isSep = c => typeof c.type === 'undefined' || c.type === 'separation';
-        this.xConstraints = constraints
-            .filter(c => c.axis === "x" && isSep(c))
-            .map(c => this.createSeparation(c));
-        this.yConstraints = constraints
-            .filter(c => c.axis === "y" && isSep(c))
-            .map(c => this.createSeparation(c));
-        constraints
-            .filter(c => c.type === 'alignment')
-            .forEach(c => this.createAlignment(c));
-    }
-
-    private setupVariablesAndBounds(x0: number[], y0: number[], desired: number[], getDesired: (v: GraphNode) => number) {
-        this.nodes.forEach((v, i) => {
-            if (v.fixed) {
-                v.variable.weight = 1000;
-                desired[i] = getDesired(v);
-            } else {
-                v.variable.weight = 1;
-            }
-            var w = (v.width || 0) / 2, h = (v.height || 0) / 2;
-            var ix = x0[i], iy = y0[i];
-            v.bounds = new Rectangle(ix - w, ix + w, iy - h, iy + h);
-        });
-    }
-
-    xProject(x0: number[], y0: number[], x: number[]) {
-        if (!this.rootGroup && !(this.avoidOverlaps || this.xConstraints)) return;
-        this.project(x0, y0, x0, x, v=> v.px, this.xConstraints, generateXGroupConstraints,
-            v => v.bounds.setXCentre(x[(<IndexedVariable>v.variable).index] = v.variable.position()),
-            g => {
-                var xmin = x[(<IndexedVariable>g.minVar).index] = g.minVar.position();
-                var xmax = x[(<IndexedVariable>g.maxVar).index] = g.maxVar.position();
-                var p2 = g.padding / 2;
-                g.bounds.x = xmin - p2;
-                g.bounds.X = xmax + p2;
-            });
-    }
-
-    yProject(x0: number[], y0: number[], y: number[]) {
-        if (!this.rootGroup && !this.yConstraints) return;
-        this.project(x0, y0, y0, y, v=> v.py, this.yConstraints, generateYGroupConstraints,
-            v => v.bounds.setYCentre(y[(<IndexedVariable>v.variable).index] = v.variable.position()),
-            g => {
-                var ymin = y[(<IndexedVariable>g.minVar).index] = g.minVar.position();
-                var ymax = y[(<IndexedVariable>g.maxVar).index] = g.maxVar.position();
-                var p2 = g.padding / 2;
-                g.bounds.y = ymin - p2;;
-                g.bounds.Y = ymax + p2;
-            });
-    }
-
-    projectFunctions(): { (x0: number[], y0: number[], r: number[]): void }[]{
-        return [
-            (x0, y0, x) => this.xProject(x0, y0, x),
-            (x0, y0, y) => this.yProject(x0, y0, y)
-        ];
-    }
-
-    private project(x0: number[], y0: number[], start: number[], desired: number[],
-        getDesired: (v: GraphNode) => number,
-        cs: Constraint[],
-        generateConstraints: (g: Group) => Constraint[],
-        updateNodeBounds: (v: GraphNode) => any,
-        updateGroupBounds: (g: Group) => any)
-    {
-        this.setupVariablesAndBounds(x0, y0, desired, getDesired);
-        if (this.rootGroup && this.avoidOverlaps) {
-            computeGroupBounds(this.rootGroup);
-            cs = cs.concat(generateConstraints(this.rootGroup));
-        }
-        this.solve(this.variables, cs, start, desired);
-        this.nodes.forEach(updateNodeBounds);
-        if (this.rootGroup && this.avoidOverlaps) {
-            this.groups.forEach(updateGroupBounds);
-        }
-    }
-
-    private solve(vs: Variable[], cs: Constraint[], starting: number[], desired: number[]) {
-        var solver = new vpsc.Solver(vs, cs);
-        solver.setStartingPositions(starting);
-        solver.setDesiredPositions(desired);
-        solver.solve();
-    }
 }
