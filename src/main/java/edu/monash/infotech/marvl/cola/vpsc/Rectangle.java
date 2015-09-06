@@ -79,7 +79,6 @@ module cola.vpsc {
 
         /**
          * return any intersection points between the given line and the sides of this rectangle
-         * @method lineIntersection
          * @param x1 number first x coord of line
          * @param y1 number first y coord of line
          * @param x2 number second x coord of line
