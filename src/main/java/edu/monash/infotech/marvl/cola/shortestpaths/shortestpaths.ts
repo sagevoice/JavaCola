@@ -1,4 +1,4 @@
-///<reference path="../pqueue.ts"/>
+///<reference path="../PriorityQueue.java"/>
 /**
  * @module shortestpaths
  */
