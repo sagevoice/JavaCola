@@ -1,516 +1,312 @@
-module cola.vpsc {
-    export class PositionStats {
-        AB: number = 0;
-        AD: number = 0;
-        A2: number = 0;
+package edu.monash.infotech.marvl.cola.vpsc;
 
-        constructor(public scale: number) {}
+import edu.monash.infotech.marvl.cola.geom.Point;
 
-        addVariable(v: Variable): void {
-            var ai = this.scale / v.scale;
-            var bi = v.offset / v.scale;
-            var wi = v.weight;
-            this.AB += wi * ai * bi;
-            this.AD += wi * ai * v.desiredPosition;
-            this.A2 += wi * ai * ai;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+public class VPSC {
+    public static Rectangle computeGroupBounds(final Group g) {
+        g.bounds = (null != g.leaves) ?
+            Arrays.stream(g.leaves).reduce((Rectangle r, c) -> c.bounds.union(r), Rectangle.empty()) :
+            Rectangle.empty();
+
+        if (null != g.groups) {
+            g.bounds = Arrays.stream(g.groups).reduce((Rectangle r, c) -> computeGroupBounds(c).union(r), g.bounds);
         }
-
-        getPosn(): number {
-            return (this.AD - this.AB) / this.A2;
-        }
+        g.bounds = g.bounds.inflate(g.padding);
+        return g.bounds;
     }
 
-    export class Constraint {
-        lm: number;
-        active: boolean = false;
-        unsatisfiable: boolean = false;
+public static void makeEdgeBetween(Link link, Rectangle source, Rectangle target, double ah) {
+    Point si = source.rayIntersection(target.cx(), target.cy());
+    if (null == si) {
+        si = new Point(source.cx(), source.cy());
+    }
+    Point ti = target.rayIntersection(source.cx(), source.cy());
+    if (null == ti) {
+        ti = new Point(target.cx(), target.cy());
+    }
+    final double dx = ti.x - si.x,
+        dy = ti.y - si.y,
+        l = Math.sqrt(dx * dx + dy * dy), al = l - ah;
+    link.sourceIntersection = si;
+    link.targetIntersection = ti;
+    link.arrowStart = new Point(si.x + al * dx / l, si.y + al * dy / l);
+}
 
-        constructor(public left: Variable, public right: Variable, public gap: number, public equality: boolean = false) {
-            this.left = left;
-            this.right = right;
-            this.gap = gap;
-            this.equality = equality;
-        }
+    public static Point makeEdgeTo(Point s, Rectangle target, double ah) {
+    Point ti = target.rayIntersection(s.x, s.y);
+    if (null == ti) {
+        ti = new Point(target.cx(), target.cy());
+    }
+    final double dx = ti.x - s.x,
+        dy = ti.y - s.y,
+        l = Math.sqrt(dx * dx + dy * dy);
+    return new Point(ti.x - ah * dx / l, ti.y - ah * dy / l);
+}
 
-        slack(): number {
-            return this.unsatisfiable ? Number.MAX_VALUE
-                : this.right.scale * this.right.position() - this.gap
-                - this.left.scale * this.left.position();
-        }
+    public static int compareEvents(final Event a, final Event b) {
+    if (a.pos > b.pos) {
+        return 1;
+    }
+    if (a.pos < b.pos) {
+        return -1;
+    }
+    if (a.isOpen) {
+        // open must come before close
+        return -1;
+    }
+    return 0;
+}
+
+    public static RBTree<Node> makeRBTree() {
+    return new RBTree<>((a, b) -> (int)(a.pos - b.pos));
+}
+
+
+public static class xRect implements RectAccessors {
+
+    @Override
+    public double getCentre(Rectangle r) {
+        return r.cx();
     }
 
-    export class Variable {
-        offset: number = 0;
-        block: Block;
-        cIn: Constraint[];
-        cOut: Constraint[];
-
-        constructor(public desiredPosition: number, public weight: number = 1, public scale: number = 1) {}
-
-        dfdv(): number {
-            return 2.0 * this.weight * (this.position() - this.desiredPosition);
-        }
-
-        position(): number {
-            return (this.block.ps.scale * this.block.posn + this.offset) / this.scale;
-        }
-
-        // visit neighbours by active constraints within the same block
-        visitNeighbours(prev: Variable, f: (c: Constraint, next: Variable) => void ): void {
-            var ff = (c, next) => c.active && prev !== next && f(c, next);
-            this.cOut.forEach(c=> ff(c, c.right));
-            this.cIn.forEach(c=> ff(c, c.left));
-        }
+    @Override
+    public double getOpen(Rectangle r) {
+        return r.y;
     }
 
-    export class Block {
-        vars: Variable[] = [];
-        posn: number;
-        ps: PositionStats;
-        blockInd: number;
-
-        constructor(v: Variable) {
-            v.offset = 0;
-            this.ps = new PositionStats(v.scale);
-            this.addVariable(v);
-        }
-
-        private addVariable(v: Variable): void {
-            v.block = this;
-            this.vars.push(v);
-            this.ps.addVariable(v);
-            this.posn = this.ps.getPosn();
-        }
-
-        // move the block where it needs to be to minimize cost
-        updateWeightedPosition(): void {
-            this.ps.AB = this.ps.AD = this.ps.A2 = 0;
-            for (var i = 0, n = this.vars.length; i < n; ++i)
-                this.ps.addVariable(this.vars[i]);
-            this.posn = this.ps.getPosn();
-        }
-
-        private compute_lm(v: Variable, u: Variable, postAction: (c: Constraint)=>void): number {
-            var dfdv = v.dfdv();
-            v.visitNeighbours(u, (c, next) => {
-                var _dfdv = this.compute_lm(next, v, postAction);
-                if (next === c.right) {
-                    dfdv += _dfdv * c.left.scale;
-                    c.lm = _dfdv;
-                } else {
-                    dfdv += _dfdv * c.right.scale;
-                    c.lm = -_dfdv;
-                }
-                postAction(c);
-            });
-            return dfdv / v.scale;
-        }
-        
-        private populateSplitBlock(v: Variable, prev: Variable): void {
-            v.visitNeighbours(prev, (c, next) => {
-                next.offset = v.offset + (next === c.right ? c.gap : -c.gap);
-                this.addVariable(next);
-                this.populateSplitBlock(next, v);
-            });
-        }
-
-        // traverse the active constraint tree applying visit to each active constraint
-        traverse(visit: (c: Constraint) => any, acc: any[], v: Variable = this.vars[0], prev: Variable=null) {
-            v.visitNeighbours(prev, (c, next) => {
-                acc.push(visit(c));
-                this.traverse(visit, acc, next, v);
-            });
-        }
-
-        // calculate lagrangian multipliers on constraints and
-        // find the active constraint in this block with the smallest lagrangian.
-        // if the lagrangian is negative, then the constraint is a split candidate.  
-        findMinLM(): Constraint {
-            var m: Constraint = null;
-            this.compute_lm(this.vars[0], null, c=> {
-                if (!c.equality && (m === null || c.lm < m.lm)) m = c;
-            });
-            return m;
-        }
-
-        private findMinLMBetween(lv: Variable, rv: Variable): Constraint {
-            this.compute_lm(lv, null, () => {});
-            var m = null;
-            this.findPath(lv, null, rv, (c, next)=> {
-                if (!c.equality && c.right === next && (m === null || c.lm < m.lm)) m = c;
-            });
-            return m;
-        }
-
-        private findPath(v: Variable, prev: Variable, to: Variable, visit: (c: Constraint, next:Variable)=>void): boolean {
-            var endFound = false;
-            v.visitNeighbours(prev, (c, next) => {
-                if (!endFound && (next === to || this.findPath(next, v, to, visit)))
-                {
-                    endFound = true;
-                    visit(c, next);
-                }
-            });
-            return endFound;
-        }
-        
-        // Search active constraint tree from u to see if there is a directed path to v.
-        // Returns true if path is found.
-        isActiveDirectedPathBetween(u: Variable, v: Variable) : boolean {
-            if (u === v) return true;
-            var i = u.cOut.length;
-            while(i--) {
-                var c = u.cOut[i];
-                if (c.active && this.isActiveDirectedPathBetween(c.right, v))
-                    return true;
-            }
-            return false;
-        }
-
-        // split the block into two by deactivating the specified constraint
-        static split(c: Constraint): Block[]{
-/* DEBUG
-            console.log("split on " + c);
-            console.assert(c.active, "attempt to split on inactive constraint");
-DEBUG */
-            c.active = false;
-            return [Block.createSplitBlock(c.left), Block.createSplitBlock(c.right)];
-        }
-
-        private static createSplitBlock(startVar: Variable): Block {
-            var b = new Block(startVar);
-            b.populateSplitBlock(startVar, null);
-            return b;
-        }
-
-        // find a split point somewhere between the specified variables
-        splitBetween(vl: Variable, vr: Variable): { constraint: Constraint; lb: Block; rb: Block } {
-/* DEBUG
-            console.assert(vl.block === this);
-            console.assert(vr.block === this);
-DEBUG */
-            var c = this.findMinLMBetween(vl, vr);
-            if (c !== null) {
-                var bs = Block.split(c);
-                return { constraint: c, lb: bs[0], rb: bs[1] };
-            }
-            // couldn't find a split point - for example the active path is all equality constraints
-            return null;
-        }
-
-        mergeAcross(b: Block, c: Constraint, dist: number): void {
-            c.active = true;
-            for (var i = 0, n = b.vars.length; i < n; ++i) {
-                var v = b.vars[i];
-                v.offset += dist;
-                this.addVariable(v);
-            }
-            this.posn = this.ps.getPosn();
-        }
-
-        cost(): number {
-            var sum = 0, i = this.vars.length;
-            while (i--) {
-                var v = this.vars[i],
-                    d = v.position() - v.desiredPosition;
-                sum += d * d * v.weight;
-            }
-            return sum;
-        }
-
-/* DEBUG
-        toString(): string {
-            var cs = [];
-            this.traverse(c=> c.toString() + "\n", cs)
-            return "b"+this.blockInd + "@" + this.posn + ": vars=" + this.vars.map(v=> v.toString()+":"+v.offset) + ";\n cons=\n" + cs;
-        }
-DEBUG */
+    @Override
+    public double getClose(Rectangle r) {
+        return r.Y;
     }
 
-    export class Blocks {
-        private list: Block[];
-
-        constructor(public vs: Variable[]) {
-            var n = vs.length;
-            this.list = new Array(n);
-            while (n--) {
-                var b = new Block(vs[n]);
-                this.list[n] = b;
-                b.blockInd = n;
-            }
-        }
-
-        cost(): number {
-            var sum = 0, i = this.list.length;
-            while (i--) sum += this.list[i].cost();
-            return sum;
-        }
-
-        insert(b: Block) {
-/* DEBUG
-            console.assert(!this.contains(b), "blocks error: tried to reinsert block " + b.blockInd)
-DEBUG */
-            b.blockInd = this.list.length;
-            this.list.push(b);
-/* DEBUG
-            console.log("insert block: " + b.blockInd);
-            this.contains(b);
-DEBUG */
-        }
-
-        remove(b: Block) {
-/* DEBUG
-            console.log("remove block: " + b.blockInd);
-            console.assert(this.contains(b));
-DEBUG */
-            var last = this.list.length - 1;
-            var swapBlock = this.list[last];
-            this.list.length = last;
-            if (b !== swapBlock) {
-                this.list[b.blockInd] = swapBlock;
-                swapBlock.blockInd = b.blockInd;
-/* DEBUG
-                console.assert(this.contains(swapBlock));
-DEBUG */
-            }
-        }
-
-        // merge the blocks on either side of the specified constraint, by copying the smaller block into the larger
-        // and deleting the smaller.
-        merge(c: Constraint): void {
-            var l = c.left.block, r = c.right.block;
-/* DEBUG
-            console.assert(l!==r, "attempt to merge within the same block");
-DEBUG */
-            var dist = c.right.offset - c.left.offset - c.gap;
-            if (l.vars.length < r.vars.length) {
-                r.mergeAcross(l, c, dist);
-                this.remove(l);
-            } else {
-                l.mergeAcross(r, c, -dist);
-                this.remove(r);
-            }
-/* DEBUG
-            console.assert(Math.abs(c.slack()) < 1e-6, "Error: Constraint should be at equality after merge!");
-            console.log("merged on " + c);
-DEBUG */
-        }
-
-        forEach(f: (b: Block, i: number) => void ) {
-            this.list.forEach(f);
-        }
-        
-        // useful, for example, after variable desired positions change.
-        updateBlockPositions(): void {
-            this.list.forEach(b=> b.updateWeightedPosition());
-        }
-
-        // split each block across its constraint with the minimum lagrangian 
-        split(inactive: Constraint[]): void {
-            this.updateBlockPositions();
-            this.list.forEach(b=> {
-                var v = b.findMinLM();
-                if (v !== null && v.lm < Solver.LAGRANGIAN_TOLERANCE) {
-                    b = v.left.block;
-                    Block.split(v).forEach(nb=>this.insert(nb));
-                    this.remove(b);
-                    inactive.push(v);
-/* DEBUG
-                    console.assert(this.contains(v.left.block));
-                    console.assert(this.contains(v.right.block));
-DEBUG */
-                }
-            });
-        }
-        
-/* DEBUG
-        // checks b is in the block, and does a sanity check over list index integrity
-        contains(b: Block): boolean {
-            var result = false;
-            this.list.forEach((bb, i) => {
-                if (bb.blockInd !== i) {
-                    console.error("blocks error, blockInd " + b.blockInd + " found at " + i);
-                    return false;
-                }
-                result = result || b === bb;
-            });
-            return result;
-        }
-
-        toString(): string {
-            return this.list.toString();
-        }
-DEBUG */
+    @Override
+    public double getSize(Rectangle r) {
+        return r.width();
     }
 
-    export class Solver {
-        bs: Blocks;
-        inactive: Constraint[];
+    @Override
+    public Rectangle makeRect(double open, double close, double center, double size) {
+        return new Rectangle(center - size / 2, center + size / 2, open, close);
+    }
 
-        static LAGRANGIAN_TOLERANCE = -1e-4;
-        static ZERO_UPPERBOUND = -1e-10;
+    @Override
+    public void findNeighbours(Node v, RBTree<Node> scanline) {
+        findXNeighbours(v, scanline);
+    }
+};
+    public static xRect xRect = new xRect();
 
-        constructor(public vs: Variable[], public cs: Constraint[]) {
-            this.vs = vs;
-            vs.forEach(v => {
-                v.cIn = [], v.cOut = [];
-/* DEBUG
-                v.toString = () => "v" + vs.indexOf(v);
-DEBUG */
-            });
-            this.cs = cs;
-            cs.forEach(c => {
-                c.left.cOut.push(c);
-                c.right.cIn.push(c);
-/* DEBUG
-                c.toString = () => c.left + "+" + c.gap + "<=" + c.right + " slack=" + c.slack() + " active=" + c.active;
-DEBUG */
-            });
-            this.inactive = cs.map(c=> { c.active = false; return c; });
-            this.bs = null;
+    public static class yRect implements RectAccessors {
+
+        @Override
+        public double getCentre(Rectangle r) {
+            return r.cy();
         }
 
-        cost(): number {
-            return this.bs.cost();
+        @Override
+        public double getOpen(Rectangle r) {
+            return r.x;
         }
 
-        // set starting positions without changing desired positions.
-        // Note: it throws away any previous block structure.
-        setStartingPositions(ps: number[]): void {
-            this.inactive = this.cs.map(c=> { c.active = false; return c; });
-            this.bs = new Blocks(this.vs);
-            this.bs.forEach((b, i) => b.posn = ps[i]);
+        @Override
+        public double getClose(Rectangle r) {
+            return r.X;
         }
 
-        setDesiredPositions(ps: number[]): void {
-            this.vs.forEach((v, i) => v.desiredPosition = ps[i]);
+        @Override
+        public double getSize(Rectangle r) {
+            return r.height();
         }
 
-/* DEBUG
-        private getId(v: Variable): number {
-            return this.vs.indexOf(v);
+        @Override
+        public Rectangle makeRect(double open, double close, double center, double size) {
+            return new Rectangle(open, close, center - size / 2, center + size / 2);
         }
 
-        // sanity check of the index integrity of the inactive list
-        checkInactive(): void {
-            var inactiveCount = 0;
-            this.cs.forEach(c=> {
-                var i = this.inactive.indexOf(c);
-                console.assert(!c.active && i >= 0 || c.active && i < 0, "constraint should be in the inactive list if it is not active: " + c);
-                if (i >= 0) {
-                    inactiveCount++;
-                } else {
-                    console.assert(c.active, "inactive constraint not found in inactive list: " + c);
-                }
-            });
-            console.assert(inactiveCount === this.inactive.length, inactiveCount + " inactive constraints found, " + this.inactive.length + "in inactive list");
-        }
-        // after every call to satisfy the following should check should pass
-        checkSatisfied(): void {
-            this.cs.forEach(c=>console.assert(c.slack() >= vpsc.Solver.ZERO_UPPERBOUND, "Error: Unsatisfied constraint! "+c));
-        }
-DEBUG */
-
-        private mostViolated(): Constraint {
-            var minSlack = Number.MAX_VALUE,
-                v: Constraint = null,
-                l = this.inactive,
-                n = l.length,
-                deletePoint = n;
-            for (var i = 0; i < n; ++i) {
-                var c = l[i];
-                if (c.unsatisfiable) continue;
-                var slack = c.slack();
-                if (c.equality || slack < minSlack) {
-                    minSlack = slack;
-                    v = c;
-                    deletePoint = i;
-                    if (c.equality) break;
-                }
-            }
-            if (deletePoint !== n &&
-                (minSlack < Solver.ZERO_UPPERBOUND && !v.active || v.equality))
-            {
-                l[deletePoint] = l[n - 1];
-                l.length = n - 1;
-            }
-            return v;
-        }
-
-        // satisfy constraints by building block structure over violated constraints
-        // and moving the blocks to their desired positions
-        satisfy(): void {
-            if (this.bs == null) {
-                this.bs = new Blocks(this.vs);
-            }
-/* DEBUG
-            console.log("satisfy: " + this.bs);
-DEBUG */
-            this.bs.split(this.inactive);
-            var v: Constraint = null;
-            while ((v = this.mostViolated()) && (v.equality || v.slack() < Solver.ZERO_UPPERBOUND && !v.active)) {
-                var lb = v.left.block, rb = v.right.block;
-/* DEBUG
-                console.log("most violated is: " + v);
-                this.bs.contains(lb);
-                this.bs.contains(rb);
-DEBUG */
-                if (lb !== rb) {
-                    this.bs.merge(v);
-                } else {
-                    if (lb.isActiveDirectedPathBetween(v.right, v.left)) {
-                        // cycle found!
-                        v.unsatisfiable = true;
-                        continue;
-                    }
-                    // constraint is within block, need to split first
-                    var split = lb.splitBetween(v.left, v.right);
-                    if (split !== null) {
-                        this.bs.insert(split.lb);
-                        this.bs.insert(split.rb);
-                        this.bs.remove(lb);
-                        this.inactive.push(split.constraint);
-                    } else {
-/* DEBUG
-                        console.log("unsatisfiable constraint found");
-DEBUG */
-                        v.unsatisfiable = true;
-                        continue;
-                    }
-                    if (v.slack() >= 0) {
-/* DEBUG
-                        console.log("violated constraint indirectly satisfied: " + v);
-DEBUG */
-                        // v was satisfied by the above split!
-                        this.inactive.push(v);
-                    } else {
-/* DEBUG
-                        console.log("merge after split:");
-DEBUG */
-                        this.bs.merge(v);
-                    }
-                }
-/* DEBUG
-                this.bs.contains(v.left.block);
-                this.bs.contains(v.right.block);
-                this.checkInactive();
-DEBUG */
-            }
-/* DEBUG
-            this.checkSatisfied();
-DEBUG */
-        }
-
-        // repeatedly build and split block structure until we converge to an optimal solution
-        solve(): number {
-            this.satisfy();
-            var lastcost = Number.MAX_VALUE, cost = this.bs.cost();
-            while (Math.abs(lastcost - cost) > 0.0001) {
-                this.satisfy();
-                lastcost = cost;
-                cost = this.bs.cost();
-            }
-            return cost;
+        @Override
+        public void findNeighbours(Node v, RBTree<Node> scanline) {
+            findYNeighbours(v, scanline);
         }
     }
-}   
+    public static yRect yRect = new yRect();
+
+    public static ArrayList<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep) {
+        return generateGroupConstraints(root, f, minSep, false);
+
+    }
+
+    public static ArrayList<Constraint> generateGroupConstraints(Group root, RectAccessors f, double minSep, boolean isContained) {
+    double padding = root.padding;
+       int gn = (null != root.groups) ? root.groups.length : 0;
+        int ln = (null != root.leaves) ? root.leaves.length : 0;
+        ArrayList<Constraint> childConstraints = (0 == gn) ? new ArrayList<>()
+        : Arrays.stream(root.groups).reduce((ArrayList<Constraint> ccs, g) -> ccs.concat(generateGroupConstraints(g, f, minSep, true)), []);
+        int n = (isContained ? 2 : 0) + ln + gn;
+        Variable[] vs = new Variable[n];
+        Rectangle[] rs = new Rectangle[n];
+        int i = 0;
+        BiConsumer<Rectangle, Variable> add = (r, v) -> { rs[i] = r; vs[i++] = v; };
+    if (isContained) {
+        // if this group is contained by another, then we add two dummy vars and rectangles for the borders
+        Rectangle b = root.bounds;
+        double c = f.getCentre(b), s = f.getSize(b) / 2,
+            open = f.getOpen(b), close = f.getClose(b),
+            min = c - s + padding / 2, max = c + s - padding / 2;
+        root.minVar.desiredPosition = min;
+        add.accept(f.makeRect(open, close, min, padding), root.minVar);
+        root.maxVar.desiredPosition = max;
+        add.accept(f.makeRect(open, close, max, padding), root.maxVar);
+    }
+    if (0 < ln) {
+        Arrays.stream(root.leaves).forEach(l -> add.accept(l.bounds, l.variable));
+    }
+    if (0 < gn) { Arrays.stream(root.groups).forEach(g -> {
+        Rectangle b = g.bounds;
+        add.accept(f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b)), g.minVar);
+    }); }
+        ArrayList<Constraint> cs = generateConstraints(rs, vs, f, minSep);
+    if (0 < gn) {
+        Arrays.stream(vs).forEach(v -> { v.cOut = new ArrayList<>(); v.cIn = new ArrayList<>(); });
+        cs.forEach(c -> { c.left.cOut.add(c); c.right.cIn.add(c); });
+        Arrays.stream(root.groups).forEach(g -> {
+            final double gapAdjustment = (g.padding - f.getSize(g.bounds)) / 2;
+            g.minVar.cIn.forEach(c -> c.gap += gapAdjustment);
+            g.minVar.cOut.forEach(c -> { c.left = g.maxVar; c.gap += gapAdjustment; });
+        });
+    }
+    childConstraints.addAll(cs);
+    return childConstraints;
+}
+
+    public static ArrayList<Constraint> generateConstraints(Rectangle[] rs, Variable[] vars, RectAccessors rect, double minSep) {
+    int i, n = rs.length;
+    int N = 2 * n;
+        Event[] events = new Event[N];
+    for (i = 0; i < n; ++i) {
+        Rectangle r = rs[i];
+        Node v = new Node(vars[i], r, rect.getCentre(r));
+        events[i] = new Event(true, v, rect.getOpen(r));
+        events[i + n] = new Event(false, v, rect.getClose(r));
+    }
+        events = (Event[])Arrays.stream(events).sorted((a, b) -> compareEvents(a, b)).collect(Collectors.toCollection(ArrayList::new)).toArray();
+        ArrayList<Constraint> cs = new ArrayList<>();
+    RBTree<Node> scanline = makeRBTree();
+    for (i = 0; i < N; ++i) {
+        Event e = events[i];
+        Node v = e.v;
+        if (e.isOpen) {
+            scanline.insert(v);
+            rect.findNeighbours(v, scanline);
+        } else {
+            // close event
+            scanline.remove(v);
+            BiConsumer<Node, Node> makeConstraint = (l, r) -> {
+                final double sep = (rect.getSize(l.r) + rect.getSize(r.r)) / 2 + minSep;
+                cs.add(new Constraint(l.v, r.v, sep));
+            };
+            final Consumer<BiConsumer<Node, Node>> reverseVisitNeighbours = (mkcon) -> {
+                Node u;
+                final Iterator<Node> it = v.prev.iterator();
+                while (null != (u = it.prev())) {
+                    mkcon.accept(u, v);
+                    u.next.remove(v);
+                }
+            };
+
+            final Consumer<BiConsumer<Node, Node>> forwardVisitNeighbours = (mkcon) -> {
+                Node u;
+                final Iterator<Node> it = v.next.iterator();
+                while (null != (u = it.next())) {
+                    mkcon.accept(u, v);
+                    u.prev.remove(v);
+                }
+            };
+            reverseVisitNeighbours.accept(makeConstraint);
+            forwardVisitNeighbours.accept(makeConstraint);
+        }
+    }
+    return cs;
+}
+
+    public static void findXNeighbours(Node v, RBTree<Node> scanline) {
+        Iterator<Node> it = scanline.findIter(v);
+        Node u;
+        while ((u = it.next()) != null) {
+            final double uovervX = u.r.overlapX(v.r);
+            if (uovervX <= 0 || uovervX <= u.r.overlapY(v.r)) {
+                v.next.insert(u);
+                u.prev.insert(v);
+            }
+            if (uovervX <= 0) {
+                break;
+            }
+        }
+
+         it = scanline.findIter(v);
+            while ((u = it.prev()) != null) {
+                final double uovervX = u.r.overlapX(v.r);
+                if (uovervX <= 0 || uovervX <= u.r.overlapY(v.r)) {
+                    v.prev.insert(u);
+                    u.next.insert(v);
+                }
+                if (uovervX <= 0) {
+                    break;
+                }
+            }
+    }
+
+
+public static void findYNeighbours(Node v, RBTree<Node> scanline) {
+        Node u = scanline.findIter(v).next();
+        if (u != null && u.r.overlapX(v.r) > 0) {
+            v.next.insert(u);
+            u.prev.insert(v);
+        }
+         u = scanline.findIter(v).prev();
+        if (u != null && u.r.overlapX(v.r) > 0) {
+            v.prev.insert(u);
+            u.next.insert(v);
+        }
+
+}
+
+    public static ArrayList<Constraint> generateXConstraints(Rectangle[] rs, Variable[] vars) {
+    return generateConstraints(rs, vars, xRect, 1e-6);
+}
+
+    public static ArrayList<Constraint> generateYConstraints(Rectangle[] rs, Variable[] vars) {
+    return generateConstraints(rs, vars, yRect, 1e-6);
+}
+
+    public static ArrayList<Constraint> generateXGroupConstraints(Group root) {
+    return generateGroupConstraints(root, xRect, 1e-6);
+}
+
+    public static ArrayList<Constraint> generateYGroupConstraints(Group root) {
+    return generateGroupConstraints(root, yRect, 1e-6);
+}
+
+    public static void removeOverlaps(Rectangle[] rs) {
+        Variable[] vs = (Variable[])Arrays.stream(rs).map(r -> new Variable(r.cx())).collect(Collectors.toCollection(ArrayList::new)).toArray();
+        ArrayList<Constraint> cs = VPSC.generateXConstraints(rs, vs);
+        Solver solver = new Solver(vs, (Constraint[])cs.toArray());
+    solver.solve();
+        for (int i=0; i < vs.length; i++) {
+            rs[i].setXCentre(vs[i].position());
+        }
+    vs = (Variable[])Arrays.stream(rs).map(r -> new Variable(r.cy())).collect(Collectors.toCollection(ArrayList::new)).toArray();
+    cs = VPSC.generateYConstraints(rs, vs);
+    solver = new Solver(vs, (Constraint[])cs.toArray());
+    solver.solve();
+        for (int i=0; i < vs.length; i++) {
+            rs[i].setYCentre(vs[i].position());
+        }
+}
+
+}

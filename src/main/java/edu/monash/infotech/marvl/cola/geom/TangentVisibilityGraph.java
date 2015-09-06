@@ -61,7 +61,7 @@ public class TangentVisibilityGraph extends VisibilityGraph {
 
     private boolean intersectsPolys(LineSegment l, int i1, int i2) {
         for (int i = 0, n = this.P.length; i < n; ++i) {
-            if (i != i1 && i != i2 && 0 < Geom.intersects(l, this.P[i]).length) {
+            if (i != i1 && i != i2 && 0 < Geom.intersects(l, this.P[i]).size()) {
                 return true;
             }
         }

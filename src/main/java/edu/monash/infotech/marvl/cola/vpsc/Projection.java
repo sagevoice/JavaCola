@@ -1,7 +1,5 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
-import edu.monash.infotech.marvl.cola.Constraint;
-
 import java.util.Arrays;
 
 public class Projection {
@@ -30,7 +28,9 @@ public class Projection {
             return v.variable = new IndexedVariable(i, 1.0);
         });
 
-        if (null != constraints) this.createConstraints(constraints);
+        if (null != constraints) {
+            this.createConstraints(constraints);
+        }
 
         if (avoidOverlaps && null != rootGroup && null != rootGroup.groups) {
             Arrays.stream(nodes).forEach(v -> {
@@ -57,7 +57,7 @@ public class Projection {
             this.nodes[c.left].variable,
             this.nodes[c.right].variable,
             c.gap,
-            typeof c.equality !== "undefined" ? c.equality : false);
+            c.equality);
     }
 
     private void makeFeasible(Constraint c) {
