@@ -1,5 +1,5 @@
 ///<reference path="vpsc.ts"/>
-///<reference path="rbtree.ts"/>
+///<reference path="../rbtree.ts"/>
 module cola.vpsc {
     export interface Leaf {
         bounds: Rectangle;

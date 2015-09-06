@@ -1,4 +1,4 @@
-///<reference path="pqueue.ts"/>
+///<reference path="../pqueue.ts"/>
 /**
  * @module shortestpaths
  */
