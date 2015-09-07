@@ -10,11 +10,11 @@ public class Constraint {
     public double   gap;
     public boolean  equality;
 
-    Constraint(final Variable left, final Variable right, final double gap) {
+    public Constraint(final Variable left, final Variable right, final double gap) {
         this(left, right, gap, false);
     }
 
-    Constraint(final Variable left, final Variable right, final double gap, final boolean equality) {
+    public Constraint(final Variable left, final Variable right, final double gap, final boolean equality) {
         this.left = left;
         this.right = right;
         this.gap = gap;

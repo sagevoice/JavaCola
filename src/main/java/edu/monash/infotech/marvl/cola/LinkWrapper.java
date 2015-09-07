@@ -3,9 +3,9 @@ package edu.monash.infotech.marvl.cola;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
-public class Link {
+public class LinkWrapper {
 
-    Node   source;
-    Node   target;
+    int    source;
+    int    target;
     double length;
 }

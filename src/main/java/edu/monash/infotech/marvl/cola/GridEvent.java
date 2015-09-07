@@ -3,9 +3,9 @@ package edu.monash.infotech.marvl.cola;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
-public class Link {
+public class GridEvent {
 
-    Node   source;
-    Node   target;
-    double length;
+    public int     type;
+    public Segment s;
+    public double  pos;
 }

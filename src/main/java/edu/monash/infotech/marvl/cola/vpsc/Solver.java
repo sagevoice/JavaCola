@@ -14,7 +14,7 @@ public class Solver {
     public Variable[] vs;
     public Constraint[] cs;
 
-    Solver(final Variable[] vs, final Constraint[] cs) {
+    public Solver(final Variable[] vs, final Constraint[] cs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.vs = vs;
         Arrays.stream(vs).forEach(v -> {

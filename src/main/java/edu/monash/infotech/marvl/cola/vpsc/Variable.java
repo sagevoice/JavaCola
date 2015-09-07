@@ -13,15 +13,15 @@ public class Variable {
     public double                weight;
     public double                scale;
 
-    Variable(final double desiredPosition) {
+    public Variable(final double desiredPosition) {
         this(desiredPosition, 1.0);
     }
 
-    Variable(final double desiredPosition, final double weight) {
+    public Variable(final double desiredPosition, final double weight) {
         this(desiredPosition, weight, 1.0);
     }
 
-    Variable(final double desiredPosition, final double weight, final double scale) {
+    public Variable(final double desiredPosition, final double weight, final double scale) {
         this.desiredPosition = desiredPosition;
         this.weight = weight;
         this.scale = scale;
