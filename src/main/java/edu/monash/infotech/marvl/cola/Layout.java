@@ -1,6 +1,7 @@
 ﻿package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.vpsc.IndexedVariable;
+import edu.monash.infotech.marvl.cola.vpsc.Projection;
 
 /**
  * Main interface to cola layout.
@@ -513,14 +514,14 @@ public class Layout {
         this._descent.run(initialUnconstrainedIterations);
 
         // apply initialIterations with user constraints but no nonoverlap constraints
-        if (curConstraints.length > 0) this._descent.project = new cola.vpsc.Projection(this._nodes, this._groups, this._rootGroup, curConstraints).projectFunctions();
+        if (curConstraints.length > 0) this._descent.project = new Projection(this._nodes, this._groups, this._rootGroup, curConstraints).projectFunctions();
         this._descent.run(initialUserConstraintIterations);
 
         // subsequent iterations will apply all constraints
         this.avoidOverlaps(ao);
         if (ao) {
             this._nodes.forEach(function (v, i) { v.x = x[i], v.y = y[i]; });
-            this._descent.project = new cola.vpsc.Projection(this._nodes, this._groups, this._rootGroup, curConstraints, true).projectFunctions();
+            this._descent.project = new Projection(this._nodes, this._groups, this._rootGroup, curConstraints, true).projectFunctions();
             this._nodes.forEach(function (v, i) { x[i] = v.x, y[i] = v.y; });
         }
 

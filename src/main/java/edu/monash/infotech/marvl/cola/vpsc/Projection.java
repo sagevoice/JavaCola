@@ -1,6 +1,14 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
+import edu.monash.infotech.marvl.cola.TriConsumer;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
+import java.util.stream.Stream;
 
 public class Projection {
     private Constraint[] xConstraints;
@@ -11,22 +19,34 @@ public class Projection {
     private Group rootGroup;
     private boolean avoidOverlaps;
 
-    Projection(final GraphNode[] nodes, final Group[] groups) {
+    public Projection(final GraphNode[] nodes, final Group[] groups) {
         this(nodes, groups, null);
     }
 
-    Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup) {
+    public Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup) {
         this(nodes, groups, rootGroup, null);
     }
 
-    Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup, final Constraint[] constraints) {
+    public Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup, final Constraint[] constraints) {
         this(nodes, groups, rootGroup, constraints, false);
     }
 
-    Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup, final Constraint[] constraints, final boolean avoidOverlaps) {
-        this.variables = Arrays.stream(nodes).map((v, i) -> {
-            return v.variable = new IndexedVariable(i, 1.0);
-        });
+    public Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup, final Constraint[] constraints, final boolean avoidOverlaps) {
+        this.nodes = nodes;
+        this.groups = groups;
+        this.rootGroup = rootGroup;
+        this.avoidOverlaps = avoidOverlaps;
+
+        int vlen = nodes.length;
+        if (avoidOverlaps && null != rootGroup && null != rootGroup.groups) {
+            vlen += 2 * groups.length;
+        }
+        this.variables = new Variable[vlen];
+        for(int i=0; i<nodes.length; i++) {
+            final GraphNode v = nodes[i];
+            v.variable = new IndexedVariable(i, 1.0);
+            this.variables[i] = v.variable;
+        }
 
         if (null != constraints) {
             this.createConstraints(constraints);
@@ -34,7 +54,7 @@ public class Projection {
 
         if (avoidOverlaps && null != rootGroup && null != rootGroup.groups) {
             Arrays.stream(nodes).forEach(v -> {
-                if (!v.width || !v.height) {
+                if (0 == v.width || 0 == v.height) {
                     //If undefined, default to nothing
                     v.bounds = new Rectangle(v.x, v.x, v.y, v.y);
                     return;
@@ -44,13 +64,14 @@ public class Projection {
             });
             VPSC.computeGroupBounds(rootGroup);
             int i = nodes.length;
-            Arrays.stream(groups).forEach(g -> {
-                this.variables[i] = g.minVar = new IndexedVariable(i++, typeof g.stiffness !== "undefined" ? g.stiffness : 0.01);
-                this.variables[i] = g.maxVar = new IndexedVariable(i++, typeof g.stiffness !== "undefined" ? g.stiffness : 0.01);
-            });
+                for(int j=0; j<groups.length; j++) {
+                    final Group g = groups[j];
+
+                this.variables[i] = g.minVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
+                this.variables[i] = g.maxVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
+            }
         }
     }
-
 
     private Constraint createSeparation(Constraint c) {
         return new Constraint(
@@ -69,105 +90,111 @@ public class Projection {
             axis = "y";
             dim = "height";
         }
-        GraphNode[] vs = c.offsets.map(o => this.nodes[o.node]).sort((a, b) => a[axis] - b[axis]);
-        var p: GraphNode = null;
-        vs.forEach(v => {
-            if (p) v[axis] = p[axis] + p[dim] + 1
+        GraphNode[] vs = c.offsets.map(o -> this.nodes[o.node]).sort((a, b) -> a[axis] - b[axis]);
+        GraphNode p = null;
+        vs.forEach(v -> {
+            if (null != p) v[axis] = p[axis] + p[dim] + 1;
             p = v;
         });
     }
 
-    private createAlignment(c: any) {
-        var u = this.nodes[c.offsets[0].node].variable;
+    private createAlignment(Constraint c) {
+        Variable u = this.nodes[c.offsets[0].node].variable;
         this.makeFeasible(c);
-        var cs = c.axis === 'x' ? this.xConstraints : this.yConstraints;
-        c.offsets.slice(1).forEach(o => {
-            var v = this.nodes[o.node].variable;
+        Constraint[] cs = c.axis.equals("x") ? this.xConstraints : this.yConstraints;
+        c.offsets.slice(1).forEach(o -> {
+                Variable v = this.nodes[o.node].variable;
             cs.push(new Constraint(u, v, o.offset, true));
         });
     }
 
-    private void createConstraints(constraints: any[]) {
-        var isSep = c => typeof c.type === 'undefined' || c.type === 'separation';
+    private void createConstraints(Constraint[] constraints) {
+        var isSep = c -> typeof c.type === 'undefined' || c.type === 'separation';
         this.xConstraints = constraints
-            .filter(c => c.axis === "x" && isSep(c))
+            .filter(c -> c.axis === "x" && isSep(c))
             .map(c => this.createSeparation(c));
         this.yConstraints = constraints
-            .filter(c => c.axis === "y" && isSep(c))
+            .filter(c -> c.axis === "y" && isSep(c))
             .map(c => this.createSeparation(c));
         constraints
-            .filter(c => c.type === 'alignment')
-            .forEach(c => this.createAlignment(c));
+            .filter(c -> c.type === 'alignment')
+            .forEach(c -> this.createAlignment(c));
     }
 
-    private setupVariablesAndBounds(x0: number[], y0: number[], desired: number[], getDesired: (v: GraphNode) => number) {
-        this.nodes.forEach((v, i) => {
+    private void setupVariablesAndBounds(final double[] x0, final double[] y0, final double[] desired, final ToDoubleFunction<GraphNode> getDesired) {
+        for (int i=0; i < nodes.length; i++) {
+            final GraphNode v = nodes[i];
             if (v.fixed) {
                 v.variable.weight = 1000;
-                desired[i] = getDesired(v);
+                desired[i] = getDesired.applyAsDouble(v);
             } else {
                 v.variable.weight = 1;
             }
-            var w = (v.width || 0) / 2, h = (v.height || 0) / 2;
-            var ix = x0[i], iy = y0[i];
+            final double w = v.width / 2, h = v.height / 2;
+            final double ix = x0[i], iy = y0[i];
             v.bounds = new Rectangle(ix - w, ix + w, iy - h, iy + h);
-        });
+        }
     }
 
-    xProject(x0: number[], y0: number[], x: number[]) {
-        if (!this.rootGroup && !(this.avoidOverlaps || this.xConstraints)) return;
-        this.project(x0, y0, x0, x, v=> v.px, this.xConstraints, generateXGroupConstraints,
-            v => v.bounds.setXCentre(x[(<IndexedVariable>v.variable).index] = v.variable.position()),
-            g => {
-                var xmin = x[(<IndexedVariable>g.minVar).index] = g.minVar.position();
-                var xmax = x[(<IndexedVariable>g.maxVar).index] = g.maxVar.position();
-                var p2 = g.padding / 2;
+    private void xProject(final double[] x0, final double[] y0, final double[] x) {
+        if ( null == this.rootGroup && !(this.avoidOverlaps || null != this.xConstraints)) {
+            return;
+        }
+        this.project(x0, y0, x0, x, v-> v.px, this.xConstraints, g -> (Constraint[])VPSC.generateXGroupConstraints(g).toArray(),
+            v -> v.bounds.setXCentre(x[((IndexedVariable)v.variable).index] = v.variable.position()),
+            g -> {
+                double xmin = x[((IndexedVariable)g.minVar).index] = g.minVar.position();
+                double xmax = x[((IndexedVariable)g.maxVar).index] = g.maxVar.position();
+                double p2 = g.padding / 2;
                 g.bounds.x = xmin - p2;
                 g.bounds.X = xmax + p2;
             });
     }
 
-    yProject(x0: number[], y0: number[], y: number[]) {
-        if (!this.rootGroup && !this.yConstraints) return;
-        this.project(x0, y0, y0, y, v=> v.py, this.yConstraints, generateYGroupConstraints,
-            v => v.bounds.setYCentre(y[(<IndexedVariable>v.variable).index] = v.variable.position()),
-            g => {
-                var ymin = y[(<IndexedVariable>g.minVar).index] = g.minVar.position();
-                var ymax = y[(<IndexedVariable>g.maxVar).index] = g.maxVar.position();
-                var p2 = g.padding / 2;
-                g.bounds.y = ymin - p2;;
+    private void yProject(final double[] x0, final double[] y0, final double[] y) {
+        if (null == this.rootGroup && null == this.yConstraints) {
+            return;
+        }
+        this.project(x0, y0, y0, y, v -> v.py, this.yConstraints, g -> (Constraint[])VPSC.generateYGroupConstraints(g).toArray(),
+            v -> v.bounds.setYCentre(y[((IndexedVariable)v.variable).index] = v.variable.position()),
+            g -> {
+                double ymin = y[((IndexedVariable)g.minVar).index] = g.minVar.position();
+                double ymax = y[((IndexedVariable)g.maxVar).index] = g.maxVar.position();
+                double p2 = g.padding / 2;
+                g.bounds.y = ymin - p2;
                 g.bounds.Y = ymax + p2;
             });
     }
 
-    projectFunctions(): { (x0: number[], y0: number[], r: number[]): void }[]{
-        return [
-            (x0, y0, x) => this.xProject(x0, y0, x),
-            (x0, y0, y) => this.yProject(x0, y0, y)
-        ];
+    public ArrayList<TriConsumer<double[], double[], double[]>> projectFunctions(){
+        ArrayList<TriConsumer<double[], double[], double[]>> result = new ArrayList<>(2);
+        result.add((x0, y0, x) -> this.xProject(x0, y0, x));
+        result.add((x0, y0, y) -> this.yProject(x0, y0, y));
+        return result;
     }
 
-    private project(x0: number[], y0: number[], start: number[], desired: number[],
-        getDesired: (v: GraphNode) => number,
-        cs: Constraint[],
-        generateConstraints: (g: Group) => Constraint[],
-        updateNodeBounds: (v: GraphNode) => any,
-        updateGroupBounds: (g: Group) => any)
+    private void project(final double[] x0, final double[] y0, final double[] start, final double[] desired,
+                    ToDoubleFunction<GraphNode> getDesired,
+                    Constraint[] cs,
+       Function<Group, Constraint[]> generateConstraints,
+    Consumer<GraphNode> updateNodeBounds,
+    Consumer<Group> updateGroupBounds)
+
     {
         this.setupVariablesAndBounds(x0, y0, desired, getDesired);
-        if (this.rootGroup && this.avoidOverlaps) {
+        if (null != this.rootGroup && this.avoidOverlaps) {
             VPSC.computeGroupBounds(this.rootGroup);
-            cs = cs.concat(generateConstraints(this.rootGroup));
+            cs = (Constraint[])Stream.concat(Arrays.stream(cs), Arrays.stream(generateConstraints.apply(this.rootGroup))).toArray();
         }
         this.solve(this.variables, cs, start, desired);
-        this.nodes.forEach(updateNodeBounds);
-        if (this.rootGroup && this.avoidOverlaps) {
-            this.groups.forEach(updateGroupBounds);
+        Arrays.stream(this.nodes).forEach(updateNodeBounds);
+        if (null != this.rootGroup && this.avoidOverlaps) {
+            Arrays.stream(this.groups).forEach(updateGroupBounds);
         }
     }
 
-    private solve(vs: Variable[], cs: Constraint[], starting: number[], desired: number[]) {
-        var solver = new vpsc.Solver(vs, cs);
+    private void solve(Variable[] vs, Constraint[] cs, double[] starting, double[] desired) {
+        Solver solver = new Solver(vs, cs);
         solver.setStartingPositions(starting);
         solver.setDesiredPositions(desired);
         solver.solve();

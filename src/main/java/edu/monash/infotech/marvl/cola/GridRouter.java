@@ -1,6 +1,7 @@
 package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.geom.Point;
+import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
 import edu.monash.infotech.marvl.cola.vpsc.Constraint;
 import edu.monash.infotech.marvl.cola.vpsc.Rectangle;
 import edu.monash.infotech.marvl.cola.vpsc.Solver;
@@ -411,7 +412,7 @@ public class GridRouter<T> {
     public ArrayList<ArrayList<Segment>> routeEdges(ArrayList<LinkWrapper> edges, double nudgeGap, ToIntFunction<LinkWrapper> source,
                                                     ToIntFunction<LinkWrapper> target)
     {
-        ArrayList<ArrayList<Vert>> routePaths = edges.stream().map(e -> this.route(source.applyAsInt(e), target.applyAsInt(e)))
+        ArrayList<GridPath> routePaths = edges.stream().map(e -> this.route(source.applyAsInt(e), target.applyAsInt(e)))
                                                      .collect(Collectors.toCollection(ArrayList::new));
         ToBooleanBiFunction<Integer, Integer> order = GridRouter.orderEdges(routePaths);
         ArrayList<ArrayList<Segment>> routes = routePaths.stream().map(e -> GridRouter.makeSegments(e))
@@ -424,10 +425,10 @@ public class GridRouter<T> {
 
     // path may have been reversed by the subsequence processing in orderEdges
     // so now we need to restore the original order
-    private static void unreverseEdges(final ArrayList<ArrayList<Segment>> routes, final ArrayList<ArrayList<Vert>> routePaths) {
+    private static void unreverseEdges(final ArrayList<ArrayList<Segment>> routes, final ArrayList<GridPath> routePaths) {
         for (int i = 0, n = routes.size(); i < n; i++) {
             final ArrayList<Segment> segments = routes.get(i);
-            ArrayList<Vert> path = routePaths.get(i);
+            GridPath path = routePaths.get(i);
             if (path.reversed) {
                 Collections.reverse(segments); // reverse order of segments
                 segments.forEach(segment -> {
@@ -472,12 +473,12 @@ public class GridRouter<T> {
 
     // returns an ordering (a lookup function) that determines the correct order to nudge the
     // edge paths apart to minimize crossings
-    private static ToBooleanBiFunction<Integer, Integer> orderEdges(final ArrayList<ArrayList<Vert>> edges) {
+    private static ToBooleanBiFunction<Integer, Integer> orderEdges(final ArrayList<GridPath> edges) {
         final ArrayList<Pair> edgeOrder = new ArrayList<>();
         final int n = edges.size();
         for (int i = 0; i < n - 1; i++) {
             for (int j = i + 1; j < n; j++) {
-                ArrayList<Vert> e = edges.get(i),
+                GridPath e = edges.get(i),
                         f = edges.get(j);
                 LongestCommonSubsequence<Vert> lcs = new LongestCommonSubsequence<>(e, f);
                 final Vert u, vi, vj;
@@ -528,7 +529,7 @@ public class GridRouter<T> {
     // for an orthogonal path described by a sequence of points, create a list of segments
     // if consecutive segments would make a straight line they are merged into a single segment
     // segments are over cloned points, not the original vertices
-    public static ArrayList<Segment> makeSegments(ArrayList<Vert> path) {
+    public static ArrayList<Segment> makeSegments(final GridPath path) {
         final TriFunction<Point, Point, Point, Boolean> isStraight = (a, b, c) -> 0.001 >
                                                                                   Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x
                                                                                                                                       - a.x));
@@ -547,7 +548,7 @@ public class GridRouter<T> {
 
     // find a route between node s and node t
     // returns an array of indices to verts
-    public ArrayList<Vert> route(final int s, final int t) {
+    public GridPath route(final int s, final int t) {
         final NodeWrapper source = this.nodes[s], target = this.nodes[t];
         this.obstacles = this.siblingObstacles(source, target);
 
@@ -576,13 +577,13 @@ public class GridRouter<T> {
                 getTarget = e -> e.target;
         final ToDoubleFunction<LinkWrapper> getLength = e -> e.length;
 
-        Calculator shortestPathCalculator = new Calculator(this.verts.size(), this.passableEdges, getSource, getTarget, getLength);
-        TriFunction<Integer, Integer, Integer, Integer> bendPenalty = (u, v, w) -> {
+        Calculator<LinkWrapper> shortestPathCalculator = new Calculator<>(this.verts.size(), (LinkWrapper[])this.passableEdges.toArray(), getSource, getTarget, getLength);
+        final TriFunction<Integer, Integer, Integer, Double> bendPenalty = (u, v, w) -> {
             final Vert a = this.verts.get(u), b = this.verts.get(v), c = this.verts.get(w);
             final double dx = Math.abs(c.x - a.x), dy = Math.abs(c.y - a.y);
             // don't count bends from internal node edges
-            if (a.node == source && a.node == b.node || b.node == target && b.node == c.node) { return 0; }
-            return 1 < dx && 1 < dy ? 1000 : 0;
+            if (a.node == source && a.node == b.node || b.node == target && b.node == c.node) { return 0.0; }
+            return 1 < dx && 1 < dy ? 1000.0 : 0.0;
         };
 
         // get shortest path
@@ -603,92 +604,78 @@ public class GridRouter<T> {
         }).collect(Collectors.toCollection(ArrayList::new));
     }
 
-    static getRoutePath(route:geom.Point[][], cornerradius:number, arrowwidth:number, arrowheight:number)
-
-    :
-
-    {
-        routepath:
-        string; arrowpath:
-    string
-    }
-
-    {
-        var result = {
-                routepath:'M ' + route[0][0].x + ' ' + route[0][0].y + ' ',
-            arrowpath:''
-        };
-        if (route.length > 1) {
-            for (var i = 0; i < route.length; i++) {
-                var li = route[i];
-                var x = li[1].x, y = li[1].y;
-                var dx = x - li[0].x;
-                var dy = y - li[0].y;
+    public static RoutePath getRoutePath(final Point[][] route, final double cornerradius, final double arrowwidth, final double arrowheight) {
+        final RoutePath result = new RoutePath ("M " + route[0][0].x + " " + route[0][0].y + " ", "" );
+        if (1 < route.length) {
+            for (int i = 0; i < route.length; i++) {
+                Point[] li = route[i];
+                double x = li[1].x, y = li[1].y;
+                double dx = x - li[0].x;
+                double dy = y - li[0].y;
                 if (i < route.length - 1) {
-                    if (Math.abs(dx) > 0) {
+                    if (0 < Math.abs(dx)) {
                         x -= dx / Math.abs(dx) * cornerradius;
                     } else {
                         y -= dy / Math.abs(dy) * cornerradius;
                     }
-                    result.routepath += 'L ' + x + ' ' + y + ' ';
-                    var l = route[i + 1];
-                    var x0 = l[0].x, y0 = l[0].y;
-                    var x1 = l[1].x;
-                    var y1 = l[1].y;
+                    result.routepath += "L " + x + " " + y + " ";
+                    Point[] l = route[i + 1];
+                    double x0 = l[0].x, y0 = l[0].y;
+                    double x1 = l[1].x;
+                    double y1 = l[1].y;
                     dx = x1 - x0;
                     dy = y1 - y0;
-                    var angle = GridRouter.angleBetween2Lines(li, l) < 0 ? 1 : 0;
-                    //console.log(cola.GridRouter.angleBetween2Lines(li, l))
-                    var x2, y2;
-                    if (Math.abs(dx) > 0) {
+                    double angle = (0 > GridRouter.angleBetween2Lines(li, l)) ? 1 : 0;
+                    double x2, y2;
+                    if (0 < Math.abs(dx)) {
                         x2 = x0 + dx / Math.abs(dx) * cornerradius;
                         y2 = y0;
                     } else {
                         x2 = x0;
                         y2 = y0 + dy / Math.abs(dy) * cornerradius;
                     }
-                    var cx = Math.abs(x2 - x);
-                    var cy = Math.abs(y2 - y);
-                    result.routepath += 'A ' + cx + ' ' + cy + ' 0 0 ' + angle + ' ' + x2 + ' ' + y2 + ' ';
+                    double cx = Math.abs(x2 - x);
+                    double cy = Math.abs(y2 - y);
+                    result.routepath += "A " + cx + " " + cy + " 0 0 " + angle + " " + x2 + " " + y2 + " ";
                 } else {
-                    var arrowtip =[x, y];
-                    var arrowcorner1, arrowcorner2;
-                    if (Math.abs(dx) > 0) {
+                    double[] arrowtip = new double[]{x, y};
+                    double[] arrowcorner1, arrowcorner2;
+                    if (0 < Math.abs(dx)) {
                         x -= dx / Math.abs(dx) * arrowheight;
-                        arrowcorner1 =[x, y + arrowwidth];
-                        arrowcorner2 =[x, y - arrowwidth];
+                        arrowcorner1 = new double[]{x, y + arrowwidth};
+                        arrowcorner2 = new double[]{x, y - arrowwidth};
                     } else {
                         y -= dy / Math.abs(dy) * arrowheight;
-                        arrowcorner1 =[x + arrowwidth, y];
-                        arrowcorner2 =[x - arrowwidth, y];
+                        arrowcorner1 = new double[]{x + arrowwidth, y};
+                        arrowcorner2 = new double[]{x - arrowwidth, y};
                     }
-                    result.routepath += 'L ' + x + ' ' + y + ' ';
-                    if (arrowheight > 0) {
-                        result.arrowpath = 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1]
-                                           + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1];
+                    result.routepath += "L " + x + " " + y + " ";
+                    if (0 < arrowheight) {
+                        result.arrowpath = "M " + arrowtip[0] + " " + arrowtip[1] + " L " + arrowcorner1[0] + " " + arrowcorner1[1]
+                                           + " L " + arrowcorner2[0] + " " + arrowcorner2[1];
                     }
                 }
             }
         } else {
-            var li = route[0];
-            var x = li[1].x, y = li[1].y;
-            var dx = x - li[0].x;
-            var dy = y - li[0].y;
-            var arrowtip =[x, y];
-            var arrowcorner1, arrowcorner2;
-            if (Math.abs(dx) > 0) {
+            Point[] li = route[0];
+            double x = li[1].x, y = li[1].y;
+            double dx = x - li[0].x;
+            double dy = y - li[0].y;
+            double[] arrowtip = new double[]{x, y};
+            double[] arrowcorner1, arrowcorner2;
+            if (0 < Math.abs(dx)) {
                 x -= dx / Math.abs(dx) * arrowheight;
-                arrowcorner1 =[x, y + arrowwidth];
-                arrowcorner2 =[x, y - arrowwidth];
+                arrowcorner1 = new double[]{x, y + arrowwidth};
+                arrowcorner2 = new double[]{x, y - arrowwidth};
             } else {
                 y -= dy / Math.abs(dy) * arrowheight;
-                arrowcorner1 =[x + arrowwidth, y];
-                arrowcorner2 =[x - arrowwidth, y];
+                arrowcorner1 = new double[]{x + arrowwidth, y};
+                arrowcorner2 = new double[]{x - arrowwidth, y};
             }
-            result.routepath += 'L ' + x + ' ' + y + ' ';
-            if (arrowheight > 0) {
-                result.arrowpath = 'M ' + arrowtip[0] + ' ' + arrowtip[1] + ' L ' + arrowcorner1[0] + ' ' + arrowcorner1[1]
-                                   + ' L ' + arrowcorner2[0] + ' ' + arrowcorner2[1];
+            result.routepath += "L " + x + " " + y + " ";
+            if (0 < arrowheight) {
+                result.arrowpath = "M " + arrowtip[0] + " " + arrowtip[1] + " L " + arrowcorner1[0] + " " + arrowcorner1[1]
+                                   + " L " + arrowcorner2[0] + " " + arrowcorner2[1];
             }
         }
         return result;

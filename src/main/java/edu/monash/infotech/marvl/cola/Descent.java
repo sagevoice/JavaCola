@@ -3,6 +3,7 @@ package edu.monash.infotech.marvl.cola;
 import edu.monash.infotech.marvl.cola.vpsc.Projection;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.BiConsumer;
 import java.util.function.ToDoubleBiFunction;
@@ -42,7 +43,7 @@ public class Descent {
 
     public Locks locks;
 
-    private static double zeroDistance = 1e-10;
+    private static final double zeroDistance = 1e-10;
     private double minD;
 
     // pool of arrays of size n used internally, allocated in constructor
@@ -67,7 +68,7 @@ public class Descent {
 
     private PseudoRandom random = new PseudoRandom();
 
-    public Projection project = null;
+    public ArrayList<TriConsumer<double[], double[], double[]>> project = null;
 
     public double[][] D;
     public double[][] G;

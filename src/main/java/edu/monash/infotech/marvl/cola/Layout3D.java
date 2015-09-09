@@ -84,7 +84,7 @@ module cola {
             //    axis: 'y', left: e.source, right: e.target, gap: e.length*1.5
             //});
             if (this.constraints) 
-                this.descent.project = new cola.vpsc.Projection(<vpsc.GraphNode[]>this.nodes, null, null, this.constraints).projectFunctions();
+                this.descent.project = new Projection(<vpsc.GraphNode[]>this.nodes, null, null, this.constraints).projectFunctions();
 
             for (var i = 0; i < this.nodes.length; i++) {
                 var v = this.nodes[i];

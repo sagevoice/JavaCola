@@ -8,7 +8,7 @@ public class PriorityQueue<T> {
     private PairingHeap<T> root;
     private LessThan<T>    lessThan;
 
-    PriorityQueue(final LessThan<T> lessThan) {
+    public PriorityQueue(final LessThan<T> lessThan) {
         this.lessThan = lessThan;
     }
 
@@ -21,7 +21,7 @@ public class PriorityQueue<T> {
     }
 
     /** put things on the heap */
-    public PairingHeap<T> push(final T[] args) {
+    public PairingHeap<T> push(final T... args) {
         PairingHeap<T> pairingNode = null;
         for (final T arg : args) {
             pairingNode = new PairingHeap<>(arg);
