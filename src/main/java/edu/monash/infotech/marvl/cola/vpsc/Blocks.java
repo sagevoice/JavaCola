@@ -5,10 +5,10 @@ import java.util.Arrays;
 
 public class Blocks {
 
-    public ArrayList<Block> list;
-    public Variable[]       vs;
+    public final ArrayList<Block> list;
+    public final Variable[]       vs;
 
-    Blocks(final Variable[] vs) {
+    public Blocks(final Variable[] vs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.vs = vs;
         int n = vs.length;

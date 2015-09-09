@@ -11,7 +11,7 @@ public class Block {
     public PositionStats ps;
     public int           blockInd;
 
-    Block(final Variable v) {
+    public Block(final Variable v) {
         v.offset = 0;
         this.ps = new PositionStats(v.scale);
         this.addVariable(v);
@@ -36,17 +36,17 @@ public class Block {
     private double compute_lm(final Variable v, final Variable u, final Consumer<Constraint> postAction) {
         double dfdv = v.dfdv();
         BiConsumer<Constraint, Variable> f =
-        v.visitNeighbours(u, (c, next) -> {
-            double _dfdv = this.compute_lm(next, v, postAction);
-            if (next == c.right) {
-                dfdv += _dfdv * c.left.scale;
-                c.lm = _dfdv;
-            } else {
-                dfdv += _dfdv * c.right.scale;
-                c.lm = -_dfdv;
-            }
-            postAction.accept(c);
-        });
+                v.visitNeighbours(u, (c, next) -> {
+                    double _dfdv = this.compute_lm(next, v, postAction);
+                    if (next == c.right) {
+                        dfdv += _dfdv * c.left.scale;
+                        c.lm = _dfdv;
+                    } else {
+                        dfdv += _dfdv * c.right.scale;
+                        c.lm = -_dfdv;
+                    }
+                    postAction.accept(c);
+                });
         return dfdv / v.scale;
     }
 

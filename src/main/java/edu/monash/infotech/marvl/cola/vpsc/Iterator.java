@@ -31,7 +31,7 @@ public class Iterator<T> {
     public ArrayList<RBNode<T>> _ancestors;
     public RBNode<T> _cursor;
 
-    Iterator(TreeBase<T> tree) {
+    public Iterator(final TreeBase<T> tree) {
         this._tree = tree;
         this._ancestors = new ArrayList<>();
         this._cursor = null;

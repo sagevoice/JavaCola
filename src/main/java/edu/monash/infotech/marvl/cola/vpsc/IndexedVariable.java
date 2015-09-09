@@ -4,7 +4,7 @@ public class IndexedVariable extends Variable {
 
     public int index;
 
-    IndexedVariable(final Integer index, final double w) {
+    public IndexedVariable(final Integer index, final double w) {
         super(0, w);
         this.index = index;
     }

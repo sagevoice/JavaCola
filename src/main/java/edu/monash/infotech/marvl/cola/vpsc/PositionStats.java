@@ -5,9 +5,9 @@ public class PositionStats {
     public double AB = 0;
     public double AD = 0;
     public double A2 = 0;
-    public double scale;
+    public final double scale;
 
-    PositionStats(final double scale) {
+    public PositionStats(final double scale) {
         this.scale = scale;
     }
 
