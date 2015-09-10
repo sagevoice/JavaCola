@@ -1,113 +1,147 @@
-/**
- * @module cola
- */
-module cola {
+package edu.monash.infotech.marvl.cola;
+
+import edu.monash.infotech.marvl.cola.vpsc.Constraint;
+
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.ToDoubleBiFunction;
+
+public class LinkLengths {
 
     // compute the size of the union of two sets a and b
-    function unionCount(a: any, b: any): number {
-        var u = {};
-        for (var i in a) u[i] = {};
-        for (var i in b) u[i] = {};
-        return Object.keys(u).length;
+    public static int unionCount(final Map<Integer, Boolean> a, final Map<Integer, Boolean> b) {
+        final Map<Integer, Boolean> u = new HashMap<>();
+        for (final Integer i : a.keySet()) {
+            u.put(i, true);
+        }
+        for (final Integer i : b.keySet()) {
+            u.put(i, true);
+        }
+        return u.keySet().size();
     }
 
     // compute the size of the intersection of two sets a and b
-    function intersectionCount(a: number[], b: number[]): number {
-        var n = 0;
-        for (var i in a) if (typeof b[i] !== 'undefined') ++n;
+    public static int intersectionCount(final Map<Integer, Boolean> a, final Map<Integer, Boolean> b) {
+        int n = 0;
+        for (final Integer i : a.keySet()) {
+            if (b.containsKey(i)) {
+                ++n;
+            }
+        }
         return n;
     }
 
-    function getNeighbours<Link>(links: Link[], la: LinkAccessor<Link>): any {
-        var neighbours = {};
-        var addNeighbours = (u, v) => {
-            if (typeof neighbours[u] === 'undefined')
-                neighbours[u] = {};
-            neighbours[u][v] = {};
+    public static <T> Map<Integer, Map<Integer, Boolean>> getNeighbours(final T[] links, final LinkAccessor<T> la) {
+        final Map<Integer, Map<Integer, Boolean>> neighbours = new HashMap<>();
+        final BiConsumer<Integer, Integer> addNeighbours = (u, v) -> {
+            if (!neighbours.containsKey(u)) {
+                neighbours.put(u, new HashMap<>());
+            }
+            neighbours.get(u).put(v, true);
         };
-        links.forEach(e => {
-            var u = la.getSourceIndex(e), v = la.getTargetIndex(e);
-            addNeighbours(u, v);
-            addNeighbours(v, u);
+        Arrays.stream(links).forEach(e -> {
+            final int u = la.getSourceIndex(e), v = la.getTargetIndex(e);
+            addNeighbours.accept(u, v);
+            addNeighbours.accept(v, u);
         });
         return neighbours;
     }
 
     // modify the lengths of the specified links by the result of function f weighted by w
-    function computeLinkLengths<Link>(links: Link[], w: number, f: (a: any, b: any) => number, la: LinkLengthAccessor<Link>) {
-        var neighbours = getNeighbours(links, la);
-        links.forEach(l => {
-            var a = neighbours[la.getSourceIndex(l)];
-            var b = neighbours[la.getTargetIndex(l)];
-            la.setLength(l, 1 + w * f(a, b));
+    public static <T> void computeLinkLengths(final T[] links, final double w,
+                                              ToDoubleBiFunction<Map<Integer, Boolean>, Map<Integer, Boolean>> f, LinkLengthAccessor<T> la)
+    {
+        final Map<Integer, Map<Integer, Boolean>> neighbours = getNeighbours(links, la);
+        Arrays.stream(links).forEach(l -> {
+            final Map<Integer, Boolean> a = neighbours.get(la.getSourceIndex(l));
+            final Map<Integer, Boolean> b = neighbours.get(la.getTargetIndex(l));
+            la.setLength(l, 1 + w * f.applyAsDouble(a, b));
         });
     }
 
-    /** modify the specified link lengths based on the symmetric difference of their neighbours
+    public static <T> void symmetricDiffLinkLengths(final T[] links, final LinkLengthAccessor<T> la) {
+        LinkLengths.symmetricDiffLinkLengths(links, la, 1);
+    }
+
+    /**
+     * modify the specified link lengths based on the symmetric difference of their neighbours
+     *
      * @class symmetricDiffLinkLengths
      */
-    export function symmetricDiffLinkLengths<Link>(links: Link[], la: LinkLengthAccessor<Link>, w: number = 1) {
+    public static <T> void symmetricDiffLinkLengths(final T[] links, final LinkLengthAccessor<T> la, final double w) {
         computeLinkLengths(links, w, (a, b) -> Math.sqrt(unionCount(a, b) - intersectionCount(a, b)), la);
     }
 
-    /** modify the specified links lengths based on the jaccard difference between their neighbours
-     * @class jaccardLinkLengths
-     */
-    export function jaccardLinkLengths<Link>(links: Link[], la: LinkLengthAccessor<Link>, w: number = 1) {
-        computeLinkLengths(links, w, (a, b) =>
-            Math.min(Object.keys(a).length, Object.keys(b).length) < 1.1 ? 0 : intersectionCount(a, b) / unionCount(a, b)
-            , la);
+    public static <T> void jaccardLinkLengths(final T[] links, final LinkLengthAccessor<T> la) {
+        jaccardLinkLengths(links, la, 1);
     }
 
-    /** generate separation constraints for all edges unless both their source and sink are in the same strongly connected component
-     * @class generateDirectedEdgeConstraints
-     */
-    export function generateDirectedEdgeConstraints<Link>(n: number, links: Link[], axis: string,
-        la: LinkSepAccessor<Link>): IConstraint[]
+    /** modify the specified links lengths based on the jaccard difference between their neighbours */
+    public static <T> void jaccardLinkLengths(final T[] links, final LinkLengthAccessor<T> la, final double w) {
+        computeLinkLengths(links, w, (a, b) ->
+                1.1 > Math.min(a.keySet().size(), b.keySet().size()) ? 0 : intersectionCount(a, b) / unionCount(a, b)
+                , la);
+    }
+
+    private static class Node {
+
+        protected int index = -1;
+        protected int        lowlink;
+        protected boolean    onStack;
+        protected List<Node> out;
+        protected int        id;
+
+        protected Node(final int id) {
+            this.id = id;
+            this.out = new ArrayList<>();
+        }
+    }
+
+    /** generate separation constraints for all edges unless both their source and sink are in the same strongly connected component */
+    public static <T> List<Constraint> generateDirectedEdgeConstraints(final int n, final T[] links, final String axis,
+                                                                       final LinkSepAccessor<T> la)
     {
-        var components = stronglyConnectedComponents(n, links, la);
-        var nodes = {};
-        components.forEach((c,i) =>
-            c.forEach(v => nodes[v] = i)
-        );
-        var constraints: any[] = [];
-        links.forEach(l => {
-            var ui = la.getSourceIndex(l), vi = la.getTargetIndex(l),
-                u = nodes[ui], v = nodes[vi];
-            if (u !== v) {
-                constraints.push({
-                    axis: axis,
-                    left: ui,
-                    right: vi,
-                    gap: la.getMinSeparation(l)
-                });
+        final List<List<Integer>> components = stronglyConnectedComponents(n, links, la);
+        final List<Integer> nodes = new ArrayList<>(n);
+        for (int i = 0; i < components.size(); i++) {
+            final List<Integer> c = components.get(i);
+            final int j = i;
+            c.forEach(v -> nodes.set(v, j));
+        }
+        final List<Constraint> constraints = new ArrayList<>();
+        Arrays.stream(links).forEach(l -> {
+            final int ui = la.getSourceIndex(l), vi = la.getTargetIndex(l);
+            final Integer u = nodes.get(ui), v = nodes.get(vi);
+            if (u != v) {
+                constraints.add(new Constraint(axis, ui, vi, la.getMinSeparation(l)));
             }
         });
         return constraints;
     }
 
     /**
-     * Tarjan's strongly connected components algorithm for directed graphs
-     * returns an array of arrays of node indicies in each of the strongly connected components.
-     * a vertex not in a SCC of two or more nodes is it's own SCC.
-     * adaptation of https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+     * Tarjan's strongly connected components algorithm for directed graphs returns an array of arrays of node indicies in each of the
+     * strongly connected components. a vertex not in a SCC of two or more nodes is it's own SCC. adaptation of
+     * https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
      */
-    export function stronglyConnectedComponents<Link>(numVertices: number, edges: Link[], la: LinkAccessor<Link>): number[][]{
-        var nodes = [];
-        var index = 0;
-        var stack = [];
-        var components = [];
-        function strongConnect(v) {
+    public static <T> List<List<Integer>> stronglyConnectedComponents(final int numVertices, final T[] edges, final LinkAccessor<T> la) {
+        final List<Node> nodes = new ArrayList<>();
+        int index = 0;
+        final List<Node> stack = new ArrayList<>();
+        final List<List<Integer>> components = new ArrayList<>();
+        final Consumer<Node> strongConnect = (v) -> {
             // Set the depth index for v to the smallest unused index
-            v.index = v.lowlink = index++;
-            stack.push(v);
+            v.lowlink = index++;
+            v.index = v.lowlink;
+            stack.add(v);
             v.onStack = true;
 
             // Consider successors of v
-            for (var w of v.out) {
-                if (typeof w.index === 'undefined') {
+            for (final Node w : v.out) {
+                if (0 > w.index) {
                     // Successor w has not yet been visited; recurse on it
-                    strongConnect(w);
+                    strongConnect.accept(w);
                     v.lowlink = Math.min(v.lowlink, w.lowlink);
                 } else if (w.onStack) {
                     // Successor w is in stack S and hence in the current SCC
@@ -116,29 +150,34 @@ module cola {
             }
 
             // If v is a root node, pop the stack and generate an SCC
-            if (v.lowlink === v.index) {
+            if (v.lowlink == v.index) {
                 // start a new strongly connected component
-                var component = [];
-                while (stack.length) {
-                    w = stack.pop();
+                List<Integer> component = new ArrayList<>();
+                while (0 < stack.size()) {
+                    final Node w = stack.remove(stack.size() - 1);
                     w.onStack = false;
                     //add w to current strongly connected component
-                    component.push(w);
-                    if (w === v) break;
+                    component.add(w.id);
+                    if (w == v) { break; }
                 }
                 // output the current strongly connected component
-                components.push(component.map(v => v.id));
+                components.add(component);
+            }
+        };
+
+        for (int i = 0; i < numVertices; i++) {
+            nodes.add(new Node(i));
+        }
+        for (final T e : edges) {
+            final Node v = nodes.get(la.getSourceIndex(e)),
+                    w = nodes.get(la.getTargetIndex(e));
+            v.out.add(w);
+        }
+        for (final Node v : nodes) {
+            if (0 > v.index) {
+                strongConnect.accept(v);
             }
         }
-        for (var i = 0; i < numVertices; i++) {
-            nodes.push({id: i, out: []});
-        }
-        for (var e of edges) {
-            let v = nodes[la.getSourceIndex(e)],
-                w = nodes[la.getTargetIndex(e)];
-            v.out.push(w);
-        }
-        for (var v of nodes) if (typeof v.index === 'undefined') strongConnect(v);
         return components;
     }
 

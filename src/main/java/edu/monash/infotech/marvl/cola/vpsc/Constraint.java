@@ -19,6 +19,11 @@ public class Constraint {
         this(left, right, gap, false);
     }
 
+    public Constraint(final String axis, final Variable left, final Variable right, final double gap) {
+        this(left, right, gap, false);
+        this.axis = axis;
+    }
+
     public Constraint(final Variable left, final Variable right, final double gap, final boolean equality) {
         this.left = left;
         this.right = right;
