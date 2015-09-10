@@ -42,9 +42,14 @@ public class PairingHeap<T> {
     }
 
     public int count() {
-        return this.empty() ? 0 : 1 + this.subheaps.reduce((int n, PairingHeap<T> h) -> {
-            return n + h.count();
-        }, 0);
+        int n = 0;
+        if (!this.empty()) {
+            n += 1;
+            for (final PairingHeap<T> h : this.subheaps) {
+                n += h.count();
+            }
+        }
+        return n;
     }
 
     public T min() {

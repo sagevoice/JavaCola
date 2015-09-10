@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 
 public class GridRouter<T> {
 
-    public NodeWrapper[] leaves = null;
+    public NodeWrapper[]          leaves;
     public NodeWrapper[]          groups;
     public NodeWrapper[]          nodes;
     public ArrayList<GridLine>    cols;

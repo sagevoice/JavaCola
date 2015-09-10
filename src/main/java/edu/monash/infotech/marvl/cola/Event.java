@@ -2,7 +2,7 @@ package edu.monash.infotech.marvl.cola;
 
 public class Event {
 
-    EventType type;
-    double    alpha;
-    double    stress;
+    public EventType type;
+    public double    alpha;
+    public double    stress;
 }

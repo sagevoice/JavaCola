@@ -9,7 +9,7 @@ public class PseudoRandom {
     private long seed;
 
     PseudoRandom() {
-        seed = 1;
+        this(1);
     }
 
     PseudoRandom(final long seed) {

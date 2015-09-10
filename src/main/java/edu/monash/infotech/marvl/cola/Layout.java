@@ -3,18 +3,20 @@
 import edu.monash.infotech.marvl.cola.vpsc.IndexedVariable;
 import edu.monash.infotech.marvl.cola.vpsc.Projection;
 
+import java.util.function.Consumer;
+
 /**
  * Main interface to cola layout.
  * @class Layout
  */
 public class Layout {
 
-    private int[]                 _canvasSize           = {1, 1};
-    private double                _linkDistance         = 20;
-    private double                _defaultNodeSize      = 10;
-    private ILinkLengthCalculator _linkLengthCalculator = null;
-    private boolean               _avoidOverlaps        = false;
-    private boolean               _handleDisconnected   = true;
+    private int[]    _canvasSize           = {1, 1};
+    private double   _linkDistance         = 20;
+    private double   _defaultNodeSize      = 10;
+    private Consumer<Void> _linkLengthCalculator = null;
+    private boolean  _avoidOverlaps        = false;
+    private boolean  _handleDisconnected   = true;
     private double _alpha;
     private double _lastStress;
     private boolean           _running        = false;
@@ -371,8 +373,8 @@ public class Layout {
      * @param {number} [w] a multiplier for the effect of the length adjustment (e.g. 0.7)
      */
     symmetricDiffLinkLengths(idealLength: number, w: number = 1): Layout {
-        this.linkDistance(l => idealLength * l.length);
-        this._linkLengthCalculator = () => cola.symmetricDiffLinkLengths(this._links, this.linkAccessor, w);
+        this.linkDistance(l -> idealLength * l.length);
+        this._linkLengthCalculator = () -> cola.symmetricDiffLinkLengths(this._links, this.linkAccessor, w);
         return this;
     }
 
@@ -387,8 +389,8 @@ public class Layout {
      * @param {number} [w] a multiplier for the effect of the length adjustment (e.g. 0.7)
      */
     jaccardLinkLengths(idealLength: number, w: number = 1): Layout {
-        this.linkDistance(l => idealLength * l.length);
-        this._linkLengthCalculator = () => cola.jaccardLinkLengths(this._links, this.linkAccessor, w);
+        this.linkDistance(l -> idealLength * l.length);
+        this._linkLengthCalculator = () -> cola.jaccardLinkLengths(this._links, this.linkAccessor, w);
         return this;
     }
 

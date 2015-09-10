@@ -15,8 +15,7 @@ public class VPSC {
             final Leaf leafUnion = Arrays.stream(g.leaves).reduce(new Leaf(Rectangle.empty(), null), (l1, l2) -> {
                 l1.bounds = l1.bounds.union(l2.bounds);
                 return l1;
-            }
-            );
+            });
             g.bounds = leafUnion.bounds;
         } else {
             g.bounds = Rectangle.empty();
@@ -33,7 +32,7 @@ public class VPSC {
         return g.bounds;
     }
 
-    public static void makeEdgeBetween(Link link, Rectangle source, Rectangle target, double ah) {
+    public static void makeEdgeBetween(final Link link, final Rectangle source, final Rectangle target, final double ah) {
         Point si = source.rayIntersection(target.cx(), target.cy());
         if (null == si) {
             si = new Point(source.cx(), source.cy());
@@ -50,7 +49,7 @@ public class VPSC {
         link.arrowStart = new Point(si.x + al * dx / l, si.y + al * dy / l);
     }
 
-    public static Point makeEdgeTo(Point s, Rectangle target, double ah) {
+    public static Point makeEdgeTo(final Point s, final Rectangle target, final double ah) {
         Point ti = target.rayIntersection(s.x, s.y);
         if (null == ti) {
             ti = new Point(target.cx(), target.cy());
@@ -76,77 +75,77 @@ public class VPSC {
     }
 
     public static RBTree<Node> makeRBTree() {
+        //noinspection NumericCastThatLosesPrecision
         return new RBTree<>((a, b) -> (int)(a.pos - b.pos));
     }
 
 
-    public static class xRect implements RectAccessors {
+    private static class xRect implements RectAccessors {
 
         @Override
-        public double getCentre(Rectangle r) {
+        public double getCentre(final Rectangle r) {
             return r.cx();
         }
 
         @Override
-        public double getOpen(Rectangle r) {
+        public double getOpen(final Rectangle r) {
             return r.y;
         }
 
         @Override
-        public double getClose(Rectangle r) {
+        public double getClose(final Rectangle r) {
             return r.Y;
         }
 
         @Override
-        public double getSize(Rectangle r) {
+        public double getSize(final Rectangle r) {
             return r.width();
         }
 
         @Override
-        public Rectangle makeRect(double open, double close, double center, double size) {
+        public Rectangle makeRect(final double open, final double close, final double center, final double size) {
             return new Rectangle(center - size / 2, center + size / 2, open, close);
         }
 
         @Override
-        public void findNeighbours(Node v, RBTree<Node> scanline) {
+        public void findNeighbours(final Node v, final RBTree<Node> scanline) {
             findXNeighbours(v, scanline);
         }
     }
 
 
-    ;
     public static xRect xRect = new xRect();
 
 
-    public static class yRect implements RectAccessors {
+    private static class yRect implements RectAccessors {
 
         @Override
-        public double getCentre(Rectangle r) {
+        public double getCentre(final Rectangle r) {
             return r.cy();
         }
 
         @Override
-        public double getOpen(Rectangle r) {
+        public double getOpen(final Rectangle r) {
             return r.x;
         }
 
         @Override
-        public double getClose(Rectangle r) {
+        public double getClose(final Rectangle r) {
             return r.X;
         }
 
         @Override
-        public double getSize(Rectangle r) {
+        public double getSize(final Rectangle r) {
             return r.height();
         }
 
         @Override
-        public Rectangle makeRect(double open, double close, double center, double size) {
+        public Rectangle makeRect(final double open, final double close, final double center, final double size) {
             return new Rectangle(open, close, center - size / 2, center + size / 2);
         }
 
         @Override
-        public void findNeighbours(Node v, RBTree<Node> scanline) {
+        public void findNeighbours(final Node v, final RBTree<Node> scanline) {
             findYNeighbours(v, scanline);
         }
     }
@@ -159,76 +158,98 @@ public class VPSC {
 
     }
 
-    public static ArrayList<Constraint> generateGroupConstraints(Group root, RectAccessors f, double minSep, boolean isContained) {
-        double padding = root.padding;
-        int gn = (null != root.groups) ? root.groups.length : 0;
-        int ln = (null != root.leaves) ? root.leaves.length : 0;
-        ArrayList<Constraint> childConstraints = (0 == gn) ? new ArrayList<>()
-                                                           : Arrays.stream(root.groups).reduce((ArrayList<Constraint> ccs, g) -> ccs
-                                                                   .concat(generateGroupConstraints(g, f, minSep, true)),[]);
-        int n = (isContained ? 2 : 0) + ln + gn;
-        Variable[] vs = new Variable[n];
-        Rectangle[] rs = new Rectangle[n];
+    public static ArrayList<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep,
+                                                                 final boolean isContained)
+    {
+        final double padding = root.padding;
+        final int gn = (null != root.groups) ? root.groups.length : 0;
+        final int ln = (null != root.leaves) ? root.leaves.length : 0;
+        final ArrayList<Constraint> childConstraints = new ArrayList<>();
+        for (int j = 0; j < gn; j++) {
+            final Group g = root.groups[j];
+            childConstraints.addAll(generateGroupConstraints(g, f, minSep, true));
+        }
+
+        final int n = (isContained ? 2 : 0) + ln + gn;
+        final Rectangle[] rs = new Rectangle[n];
+        final Variable[] vs = new Variable[n];
         int i = 0;
-        BiConsumer<Rectangle, Variable> add = (r, v) -> { rs[i] = r; vs[i++] = v; };
         if (isContained) {
             // if this group is contained by another, then we add two dummy vars and rectangles for the borders
-            Rectangle b = root.bounds;
-            double c = f.getCentre(b), s = f.getSize(b) / 2,
+            final Rectangle b = root.bounds;
+            final double c = f.getCentre(b), s = f.getSize(b) / 2,
                     open = f.getOpen(b), close = f.getClose(b),
                     min = c - s + padding / 2, max = c + s - padding / 2;
             root.minVar.desiredPosition = min;
-            add.accept(f.makeRect(open, close, min, padding), root.minVar);
+            rs[i] = f.makeRect(open, close, min, padding);
+            vs[i++] = root.minVar;
             root.maxVar.desiredPosition = max;
-            add.accept(f.makeRect(open, close, max, padding), root.maxVar);
+            rs[i] = f.makeRect(open, close, max, padding);
+            vs[i++] = root.maxVar;
         }
-        if (0 < ln) {
-            Arrays.stream(root.leaves).forEach(l -> add.accept(l.bounds, l.variable));
+        for (int j = 0; j < ln; j++) {
+            final Leaf l = root.leaves[j];
+            rs[i] = l.bounds;
+            vs[i++] = l.variable;
         }
+        for (int j = 0; j < gn; j++) {
+            final Group g = root.groups[j];
+            final Rectangle b = g.bounds;
+            rs[i] = f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b));
+            vs[i++] = g.minVar;
+        }
+        final ArrayList<Constraint> cs = generateConstraints(rs, vs, f, minSep);
         if (0 < gn) {
-            Arrays.stream(root.groups).forEach(g -> {
-                Rectangle b = g.bounds;
-                add.accept(f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b)), g.minVar);
+            Arrays.stream(vs).forEach(v -> {
+                v.cOut = new ArrayList<>();
+                v.cIn = new ArrayList<>();
             });
-        }
-        ArrayList<Constraint> cs = generateConstraints(rs, vs, f, minSep);
-        if (0 < gn) {
-            Arrays.stream(vs).forEach(v -> { v.cOut = new ArrayList<>(); v.cIn = new ArrayList<>(); });
-            cs.forEach(c -> { c.left.cOut.add(c); c.right.cIn.add(c); });
+            cs.forEach(c -> {
+                c.left.cOut.add(c);
+                c.right.cIn.add(c);
+            });
             Arrays.stream(root.groups).forEach(g -> {
                 final double gapAdjustment = (g.padding - f.getSize(g.bounds)) / 2;
-                g.minVar.cIn.forEach(c -> c.gap += gapAdjustment);
-                g.minVar.cOut.forEach(c -> { c.left = g.maxVar; c.gap += gapAdjustment; });
+                g.minVar.cIn.forEach(c -> {
+                    c.gap += gapAdjustment;
+                });
+                g.minVar.cOut.forEach(c -> {
+                    c.left = g.maxVar;
+                    c.gap += gapAdjustment;
+                });
             });
         }
         childConstraints.addAll(cs);
         return childConstraints;
     }
 
-    public static ArrayList<Constraint> generateConstraints(Rectangle[] rs, Variable[] vars, RectAccessors rect, double minSep) {
-        int i, n = rs.length;
-        int N = 2 * n;
+    public static ArrayList<Constraint> generateConstraints(final Rectangle[] rs, final Variable[] vars, final RectAccessors rect,
+                                                            final double minSep)
+    {
+        int i;
+        final int n = rs.length;
+        final int N = 2 * n;
         Event[] events = new Event[N];
         for (i = 0; i < n; ++i) {
-            Rectangle r = rs[i];
-            Node v = new Node(vars[i], r, rect.getCentre(r));
+            final Rectangle r = rs[i];
+            final Node v = new Node(vars[i], r, rect.getCentre(r));
             events[i] = new Event(true, v, rect.getOpen(r));
             events[i + n] = new Event(false, v, rect.getClose(r));
         }
-        events = (Event[])Arrays.stream(events).sorted((a, b) -> compareEvents(a, b)).collect(Collectors.toCollection(ArrayList::new))
-                                .toArray();
-        ArrayList<Constraint> cs = new ArrayList<>();
-        RBTree<Node> scanline = makeRBTree();
+        events = Arrays.stream(events).sorted((a, b) -> compareEvents(a, b)).collect(Collectors.toList())
+                       .toArray(new Event[N]);
+        final ArrayList<Constraint> cs = new ArrayList<>();
+        final RBTree<Node> scanline = makeRBTree();
         for (i = 0; i < N; ++i) {
-            Event e = events[i];
-            Node v = e.v;
+            final Event e = events[i];
+            final Node v = e.v;
             if (e.isOpen) {
                 scanline.insert(v);
                 rect.findNeighbours(v, scanline);
             } else {
                 // close event
                 scanline.remove(v);
-                BiConsumer<Node, Node> makeConstraint = (l, r) -> {
+                final BiConsumer<Node, Node> makeConstraint = (l, r) -> {
                     final double sep = (rect.getSize(l.r) + rect.getSize(r.r)) / 2 + minSep;
                     cs.add(new Constraint(l.v, r.v, sep));
                 };
@@ -256,16 +277,16 @@ public class VPSC {
         return cs;
     }
 
-    public static void findXNeighbours(Node v, RBTree<Node> scanline) {
+    public static void findXNeighbours(final Node v, final RBTree<Node> scanline) {
         Iterator<Node> it = scanline.findIter(v);
         Node u;
         while ((u = it.next()) != null) {
             final double uovervX = u.r.overlapX(v.r);
-            if (uovervX <= 0 || uovervX <= u.r.overlapY(v.r)) {
+            if (0 >= uovervX || uovervX <= u.r.overlapY(v.r)) {
                 v.next.insert(u);
                 u.prev.insert(v);
             }
-            if (uovervX <= 0) {
+            if (0 >= uovervX) {
                 break;
             }
         }
@@ -273,48 +294,48 @@ public class VPSC {
         it = scanline.findIter(v);
         while ((u = it.prev()) != null) {
             final double uovervX = u.r.overlapX(v.r);
-            if (uovervX <= 0 || uovervX <= u.r.overlapY(v.r)) {
+            if (0 >= uovervX || uovervX <= u.r.overlapY(v.r)) {
                 v.prev.insert(u);
                 u.next.insert(v);
             }
-            if (uovervX <= 0) {
+            if (0 >= uovervX) {
                 break;
             }
         }
     }
 
 
-    public static void findYNeighbours(Node v, RBTree<Node> scanline) {
+    public static void findYNeighbours(final Node v, final RBTree<Node> scanline) {
         Node u = scanline.findIter(v).next();
-        if (u != null && u.r.overlapX(v.r) > 0) {
+        if (null != u && 0 < u.r.overlapX(v.r)) {
             v.next.insert(u);
             u.prev.insert(v);
         }
         u = scanline.findIter(v).prev();
-        if (u != null && u.r.overlapX(v.r) > 0) {
+        if (null != u && 0 < u.r.overlapX(v.r)) {
             v.prev.insert(u);
             u.next.insert(v);
         }
 
     }
 
-    public static ArrayList<Constraint> generateXConstraints(Rectangle[] rs, Variable[] vars) {
+    public static ArrayList<Constraint> generateXConstraints(final Rectangle[] rs, final Variable[] vars) {
         return generateConstraints(rs, vars, xRect, 1e-6);
     }
 
-    public static ArrayList<Constraint> generateYConstraints(Rectangle[] rs, Variable[] vars) {
+    public static ArrayList<Constraint> generateYConstraints(final Rectangle[] rs, final Variable[] vars) {
         return generateConstraints(rs, vars, yRect, 1e-6);
     }
 
-    public static ArrayList<Constraint> generateXGroupConstraints(Group root) {
+    public static ArrayList<Constraint> generateXGroupConstraints(final Group root) {
         return generateGroupConstraints(root, xRect, 1e-6);
     }
 
-    public static ArrayList<Constraint> generateYGroupConstraints(Group root) {
+    public static ArrayList<Constraint> generateYGroupConstraints(final Group root) {
         return generateGroupConstraints(root, yRect, 1e-6);
     }
 
-    public static void removeOverlaps(Rectangle[] rs) {
+    public static void removeOverlaps(final Rectangle[] rs) {
         Variable[] vs = Arrays.stream(rs).map(r -> new Variable(r.cx())).collect(Collectors.toList()).toArray(new Variable[rs.length]);
         ArrayList<Constraint> cs = VPSC.generateXConstraints(rs, vs);
         Solver solver = new Solver(vs, cs.toArray(new Constraint[cs.size()]));

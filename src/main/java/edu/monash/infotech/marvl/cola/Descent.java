@@ -113,7 +113,9 @@ public class Descent {
                 }
             }
         }
-        if (this.minD == Double.MAX_VALUE) this.minD = 1;
+        if (Double.MAX_VALUE == this.minD) {
+            this.minD = 1;
+        }
         i = this.k;
         while (0 < i--) {
             this.g[i] = new double[n];
@@ -159,7 +161,9 @@ public class Descent {
     // compute first and second derivative information storing results in this.g and this.H
     public void computeDerivatives(double[][] x) {
         int n = this.n;
-        if (1 > n) return;
+        if (1 > n) {
+            return;
+        }
         int i;
         double[] d = new double[this.k];
         double[] d2 = new double[this.k];
@@ -181,7 +185,9 @@ public class Descent {
                         double dx = d[i] = x[i][u] - x[i][v];
                         sd2 += d2[i] = dx * dx;
                     }
-                    if (1e-9 < sd2) break;
+                    if (1e-9 < sd2) {
+                        break;
+                    }
                     double[] rd = this.offsetDir();
                     for (i = 0; i < this.k; ++i) {
                         x[i][v] += rd[i];
@@ -311,11 +317,11 @@ public class Descent {
         Descent.copy(x0, r);
         this.takeDescentStep(r[0], d[0], stepSize);
         if (null != this.project) {
-            this.project[0](x0[0], x0[1], r[0]);
+            this.project.get(0).accept(x0[0], x0[1], r[0]);
         }
         this.takeDescentStep(r[1], d[1], stepSize);
         if (null != this.project) {
-            this.project[1](r[0], x0[1], r[1]);
+            this.project.get(1).accept(r[0], x0[1], r[1]);
         }
 
         // todo: allow projection against constraints in higher dimensions
@@ -325,8 +331,10 @@ public class Descent {
     }
 
     private static void mApply(final int m, final int n, final BiConsumer<Integer, Integer> f) {
-        int i = m; while (0 < i--) {
-            int j = n; while (0 < j--) {
+        int i = m;
+        while (0 < i--) {
+            int j = n;
+            while (0 < j--) {
                 f.accept(i, j);
             }
         }
@@ -367,12 +375,16 @@ public class Descent {
         this.computeNextPosition(this.ib, this.c);
         this.computeNextPosition(this.c, this.d);
         double disp = 0;
-        this.matrixApply((i, j) -> {
-            double x = (this.a[i][j] + 2.0 * this.b[i][j] + 2.0 * this.c[i][j] + this.d[i][j]) / 6.0,
-                d = this.x[i][j] - x;
-            disp += d * d;
-            this.x[i][j] = x;
-        });
+        int i = this.k;
+        while (0 < i--) {
+            int j = this.n;
+            while (0 < j--) {
+                double x = (this.a[i][j] + 2.0 * this.b[i][j] + 2.0 * this.c[i][j] + this.d[i][j]) / 6.0,
+                    d = this.x[i][j] - x;
+                disp += d * d;
+                this.x[i][j] = x;
+            }
+        }
         return disp;
     }
 

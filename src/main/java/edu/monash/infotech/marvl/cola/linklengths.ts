@@ -3,15 +3,6 @@
  */
 module cola {
 
-    export interface LinkAccessor<Link> {
-        getSourceIndex(l: Link): number;
-        getTargetIndex(l: Link): number;
-    }
-
-    export interface LinkLengthAccessor<Link> extends LinkAccessor<Link> {
-        setLength(l: Link, value: number): void;
-    }
-
     // compute the size of the union of two sets a and b
     function unionCount(a: any, b: any): number {
         var u = {};
@@ -56,7 +47,7 @@ module cola {
      * @class symmetricDiffLinkLengths
      */
     export function symmetricDiffLinkLengths<Link>(links: Link[], la: LinkLengthAccessor<Link>, w: number = 1) {
-        computeLinkLengths(links, w, (a, b) => Math.sqrt(unionCount(a, b) - intersectionCount(a, b)), la);
+        computeLinkLengths(links, w, (a, b) -> Math.sqrt(unionCount(a, b) - intersectionCount(a, b)), la);
     }
 
     /** modify the specified links lengths based on the jaccard difference between their neighbours
@@ -66,21 +57,6 @@ module cola {
         computeLinkLengths(links, w, (a, b) =>
             Math.min(Object.keys(a).length, Object.keys(b).length) < 1.1 ? 0 : intersectionCount(a, b) / unionCount(a, b)
             , la);
-    }
-
-    export interface IConstraint {
-        left: number;
-        right: number;
-        gap: number;
-    }
-
-    export interface DirectedEdgeConstraints {
-        axis: string;
-        gap: number;
-    }
-
-    export interface LinkSepAccessor<Link> extends LinkAccessor<Link> {
-        getMinSeparation(l: Link): number;
     }
 
     /** generate separation constraints for all edges unless both their source and sink are in the same strongly connected component
