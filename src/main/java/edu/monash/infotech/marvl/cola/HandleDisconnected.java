@@ -1,307 +1,293 @@
-﻿module cola {
-    var packingOptions = {
-        PADDING: 10,
-        GOLDEN_SECTION: (1 + Math.sqrt(5)) / 2,
-        FLOAT_EPSILON: 0.0001,
-        MAX_INERATIONS: 100
-    };
+﻿package edu.monash.infotech.marvl.cola;
 
-    // assign x, y to nodes while using box packing algorithm for disconnected graphs
-    export function applyPacking(graphs:Array<any>, w, h, node_size, desired_ratio = 1) {
+import edu.monash.infotech.marvl.cola.geom.Point;
 
-        var init_x = 0,
-            init_y = 0,
+import java.util.*;
 
-            svg_width = w,
-            svg_height = h,
+public class HandleDisconnected {
 
-            desired_ratio = typeof desired_ratio !== 'undefined' ? desired_ratio : 1,
-            node_size = typeof node_size !== 'undefined' ? node_size : 0,
+    protected static final double PADDING        = 10;
+    protected static final double GOLDEN_SECTION = (1 + Math.sqrt(5)) / 2;
+    protected static final double FLOAT_EPSILON  = 0.0001;
+    protected static final int    MAX_ITERATIONS = 100;
 
-            real_width = 0,
-            real_height = 0,
-            min_width = 0,
+    private double      init_x;
+    private double      init_y;
+    private double      svg_width;
+    private double      svg_height;
+    private double      real_width;
+    private double      real_height;
+    private double      min_width;
+    private double      global_bottom;
+    private List<Graph> line;
 
-            global_bottom = 0,
-            line = [];
 
-        if (graphs.length == 0)
-            return;
+    // get bounding boxes for all separate graphs
+    private void calculate_bb(final List<Graph> graphs, final double node_size) {
+        graphs.forEach(g -> calculate_single_bb(g, node_size));
+    }
 
-        /// that would take care of single nodes problem
-        // graphs.forEach(function (g) {
-        //     if (g.array.length == 1) {
-        //         g.array[0].x = 0;
-        //         g.array[0].y = 0;
-        //     }
-        // });
+    private void calculate_single_bb(final Graph graph, final double node_size) {
+        double min_x = Double.MAX_VALUE, min_y = Double.MAX_VALUE,
+                max_x = 0, max_y = 0;
 
-        calculate_bb(graphs);
-        apply(graphs, desired_ratio);
-        put_nodes_to_right_positions(graphs);
-
-        // get bounding boxes for all separate graphs
-        function calculate_bb(graphs) {
-
-            graphs.forEach(function (g) {
-                calculate_single_bb(g)
-            });
-
-            function calculate_single_bb(graph) {
-                var min_x = Number.MAX_VALUE, min_y = Number.MAX_VALUE,
-                    max_x = 0, max_y = 0;
-
-                graph.array.forEach(function (v) {
-                    var w = typeof v.width !== 'undefined' ? v.width : node_size;
-                    var h = typeof v.height !== 'undefined' ? v.height : node_size;
-                    w /= 2;
-                    h /= 2;
-                    max_x = Math.max(v.x + w, max_x);
-                    min_x = Math.min(v.x - w, min_x);
-                    max_y = Math.max(v.y + h, max_y);
-                    min_y = Math.min(v.y - h, min_y);
-                });
-
-                graph.width = max_x - min_x;
-                graph.height = max_y - min_y;
-            }
+        for (final Node v : graph.array) {
+            double w = 0 < v.width ? v.width : node_size;
+            double h = 0 < v.height ? v.height : node_size;
+            w /= 2;
+            h /= 2;
+            max_x = Math.max(v.x + w, max_x);
+            min_x = Math.min(v.x - w, min_x);
+            max_y = Math.max(v.y + h, max_y);
+            min_y = Math.min(v.y - h, min_y);
         }
 
-        //function plot(data, left, right, opt_x, opt_y) {
-        //    // plot the cost function
-        //    var plot_svg = d3.select("body").append("svg")
-        //        .attr("width", function () { return 2 * (right - left); })
-        //        .attr("height", 200);
+        graph.width = max_x - min_x;
+        graph.height = max_y - min_y;
+    }
 
+    // starts box packing algorithm
+    // desired ratio is 1 by default
+    private void apply(final List<Graph> data, final double desired_ratio) {
+        double curr_best_f = Double.POSITIVE_INFINITY;
+        double curr_best = 0;
+        data.sort((a, b) -> {
+            //noinspection NumericCastThatLosesPrecision
+            return (int)(b.height - a.height);
+        });
 
-        //    var x = d3.time.scale().range([0, 2 * (right - left)]);
+        Graph minGraph = new Graph();
+        minGraph.width = Double.MAX_VALUE;
+        minGraph = data.stream().reduce(minGraph, (a, b) -> {
+            return a.width < b.width ? a : b;
+        });
+        min_width = minGraph.width;
 
-        //    var xAxis = d3.svg.axis().scale(x).orient("bottom");
-        //    plot_svg.append("g").attr("class", "x axis")
-        //        .attr("transform", "translate(0, 199)")
-        //        .call(xAxis);
+        double x1 = min_width;
+        double left = x1;
+        double x2 = get_entire_width(data);
+        double right = x2;
+        int iterationCounter = 0;
 
-        //    var lastX = 0;
-        //    var lastY = 0;
-        //    var value = 0;
-        //    for (var r = left; r < right; r += 1) {
-        //        value = step(data, r);
-        //        // value = 1;
+        double f_x1 = Double.MAX_VALUE;
+        double f_x2 = Double.MAX_VALUE;
+        int flag = -1; // determines which among f_x1 and f_x2 to recompute
 
-        //        plot_svg.append("line").attr("x1", 2 * (lastX - left))
-        //            .attr("y1", 200 - 30 * lastY)
-        //            .attr("x2", 2 * r - 2 * left)
-        //            .attr("y2", 200 - 30 * value)
-        //            .style("stroke", "rgb(6,120,155)");
+        double dx = Double.MAX_VALUE;
+        double df = Double.MAX_VALUE;
 
-        //        lastX = r;
-        //        lastY = value;
-        //    }
+        while ((dx > min_width) || FLOAT_EPSILON < df) {
 
-        //    plot_svg.append("circle").attr("cx", 2 * opt_x - 2 * left).attr("cy", 200 - 30 * opt_y)
-        //        .attr("r", 5).style('fill', "rgba(0,0,0,0.5)");
-
-        //}
-
-        // actual assigning of position to nodes
-        function put_nodes_to_right_positions(graphs) {
-            graphs.forEach(function (g) {
-                // calculate current graph center:
-                var center = { x: 0, y: 0 };
-
-                g.array.forEach(function (node) {
-                    center.x += node.x;
-                    center.y += node.y;
-                });
-
-                center.x /= g.array.length;
-                center.y /= g.array.length;
-
-                // calculate current top left corner:
-                var corner = { x: center.x - g.width / 2, y: center.y - g.height / 2 };
-                var offset = { x: g.x - corner.x, y: g.y - corner.y };
-
-                // put nodes:
-                g.array.forEach(function (node) {
-                    node.x = node.x + offset.x + svg_width / 2 - real_width / 2;
-                    node.y = node.y + offset.y + svg_height / 2 - real_height / 2;
-                });
-            });
-        }
-
-        // starts box packing algorithm
-        // desired ratio is 1 by default
-        function apply(data, desired_ratio) {
-            var curr_best_f = Number.POSITIVE_INFINITY;
-            var curr_best = 0;
-            data.sort(function (a, b) { return b.height - a.height; });
-
-            min_width = data.reduce(function (a, b) {
-                return a.width < b.width ? a.width : b.width;
-            });
-
-            var left = x1 = min_width;
-            var right = x2 = get_entire_width(data);
-            var iterationCounter = 0;
-
-            var f_x1 = Number.MAX_VALUE;
-            var f_x2 = Number.MAX_VALUE;
-            var flag = -1; // determines which among f_x1 and f_x2 to recompute
-
-
-            var dx = Number.MAX_VALUE;
-            var df = Number.MAX_VALUE;
-
-            while ((dx > min_width) || df > packingOptions.FLOAT_EPSILON) {
-
-                if (flag != 1) {
-                    var x1 = right - (right - left) / packingOptions.GOLDEN_SECTION;
-                    var f_x1 = step(data, x1);
-                }
-                if (flag != 0) {
-                    var x2 = left + (right - left) / packingOptions.GOLDEN_SECTION;
-                    var f_x2 = step(data, x2);
-                }
-
-                dx = Math.abs(x1 - x2);
-                df = Math.abs(f_x1 - f_x2);
-
-                if (f_x1 < curr_best_f) {
-                    curr_best_f = f_x1;
-                    curr_best = x1;
-                }
-
-                if (f_x2 < curr_best_f) {
-                    curr_best_f = f_x2;
-                    curr_best = x2;
-                }
-
-                if (f_x1 > f_x2) {
-                    left = x1;
-                    x1 = x2;
-                    f_x1 = f_x2;
-                    flag = 1;
-                } else {
-                    right = x2;
-                    x2 = x1;
-                    f_x2 = f_x1;
-                    flag = 0;
-                }
-
-                if (iterationCounter++ > 100) {
-                    break;
-                }
+            if (1 != flag) {
+                x1 = right - (right - left) / GOLDEN_SECTION;
+                f_x1 = step(data, x1, desired_ratio);
             }
-            // plot(data, min_width, get_entire_width(data), curr_best, curr_best_f);
-            step(data, curr_best);
-        }
-
-        // one iteration of the optimization method
-        // (gives a proper, but not necessarily optimal packing)
-        function step(data, max_width) {
-            line = [];
-            real_width = 0;
-            real_height = 0;
-            global_bottom = init_y;
-
-            for (var i = 0; i < data.length; i++) {
-                var o = data[i];
-                put_rect(o, max_width);
+            if (0 != flag) {
+                x2 = left + (right - left) / GOLDEN_SECTION;
+                f_x2 = step(data, x2, desired_ratio);
             }
 
-            return Math.abs(get_real_ratio() - desired_ratio);
-        }
+            dx = Math.abs(x1 - x2);
+            df = Math.abs(f_x1 - f_x2);
 
-        // looking for a position to one box 
-        function put_rect(rect, max_width) {
-
-
-            var parent = undefined;
-
-            for (var i = 0; i < line.length; i++) {
-                if ((line[i].space_left >= rect.height) && (line[i].x + line[i].width + rect.width + packingOptions.PADDING - max_width) <= packingOptions.FLOAT_EPSILON) {
-                    parent = line[i];
-                    break;
-                }
+            if (f_x1 < curr_best_f) {
+                curr_best_f = f_x1;
+                curr_best = x1;
             }
 
-            line.push(rect);
+            if (f_x2 < curr_best_f) {
+                curr_best_f = f_x2;
+                curr_best = x2;
+            }
 
-            if (parent !== undefined) {
-                rect.x = parent.x + parent.width + packingOptions.PADDING;
-                rect.y = parent.bottom;
-                rect.space_left = rect.height;
-                rect.bottom = rect.y;
-                parent.space_left -= rect.height + packingOptions.PADDING;
-                parent.bottom += rect.height + packingOptions.PADDING;
+            if (f_x1 > f_x2) {
+                left = x1;
+                x1 = x2;
+                f_x1 = f_x2;
+                flag = 1;
             } else {
-                rect.y = global_bottom;
-                global_bottom += rect.height + packingOptions.PADDING;
-                rect.x = init_x;
-                rect.bottom = rect.y;
-                rect.space_left = rect.height;
+                right = x2;
+                x2 = x1;
+                f_x2 = f_x1;
+                flag = 0;
             }
 
-            if (rect.y + rect.height - real_height > -packingOptions.FLOAT_EPSILON) real_height = rect.y + rect.height - init_y;
-            if (rect.x + rect.width - real_width > -packingOptions.FLOAT_EPSILON) real_width = rect.x + rect.width - init_x;
-        };
-
-        function get_entire_width(data) {
-            var width = 0;
-            data.forEach(function (d) { return width += d.width + packingOptions.PADDING; });
-            return width;
+            if (MAX_ITERATIONS < iterationCounter++) {
+                break;
+            }
         }
 
-        function get_real_ratio() {
-            return (real_width / real_height);
+        step(data, curr_best, desired_ratio);
+    }
+
+    private double get_entire_width(final List<Graph> data) {
+        double width = 0;
+        for (final Graph d : data) {
+            width += d.width + PADDING;
+        }
+        return width;
+    }
+
+    // one iteration of the optimization method
+    // (gives a proper, but not necessarily optimal packing)
+    private double step(final List<Graph> data, final double max_width, final double desired_ratio) {
+        line = new ArrayList<>();
+        real_width = 0;
+        real_height = 0;
+        global_bottom = init_y;
+
+        for (final Graph o : data) {
+            put_rect(o, max_width);
+        }
+
+        return Math.abs(get_real_ratio() - desired_ratio);
+    }
+
+    // looking for a position to one box
+    private void put_rect(final Graph rect, final double max_width) {
+
+        Graph parent = null;
+
+        for (final Graph l : line) {
+            if ((l.space_left >= rect.height) && (l.x + l.width + rect.width + PADDING - max_width) <= FLOAT_EPSILON) {
+                parent = l;
+                break;
+            }
+        }
+
+        line.add(rect);
+
+        if (null != parent) {
+            rect.x = parent.x + parent.width + PADDING;
+            rect.y = parent.bottom;
+            rect.space_left = rect.height;
+            rect.bottom = rect.y;
+            parent.space_left -= rect.height + PADDING;
+            parent.bottom += rect.height + PADDING;
+        } else {
+            rect.y = global_bottom;
+            global_bottom += rect.height + PADDING;
+            rect.x = init_x;
+            rect.bottom = rect.y;
+            rect.space_left = rect.height;
+        }
+
+        if (-FLOAT_EPSILON < rect.y + rect.height - real_height) {
+            real_height = rect.y + rect.height - init_y;
+        }
+        if (-FLOAT_EPSILON < rect.x + rect.width - real_width) {
+            real_width = rect.x + rect.width - init_x;
         }
     }
 
-    /** 
-     * connected components of graph
-     * returns an array of {}
-     */
-    export function separateGraphs(nodes, links) {
-        var marks = {};
-        var ways = {};
-        var graphs = [];
-        var clusters = 0;
+    private double get_real_ratio() {
+        return (real_width / real_height);
+    }
 
-        for (var i = 0; i < links.length; i++) {
-            var link = links[i];
-            var n1 = link.source;
-            var n2 = link.target;
-            if (ways[n1.index])
-                ways[n1.index].push(n2);
-            else
-                ways[n1.index] = [n2];
+    // actual assigning of position to nodes
+    private void put_nodes_to_right_positions(final List<Graph> graphs) {
+        graphs.forEach(g -> {
+            // calculate current graph center:
+            final Point center = new Point(0, 0);
 
-            if (ways[n2.index])
-                ways[n2.index].push(n1);
-            else
-                ways[n2.index] = [n1];
+            g.array.forEach(node -> {
+                center.x += node.x;
+                center.y += node.y;
+            });
+
+            center.x /= g.array.size();
+            center.y /= g.array.size();
+
+            // calculate current top left corner:
+            final Point corner = new Point(center.x - g.width / 2, center.y - g.height / 2);
+            final Point offset = new Point(g.x - corner.x, g.y - corner.y);
+
+            // put nodes:
+            g.array.forEach(node -> {
+                node.x = node.x + offset.x + svg_width / 2 - real_width / 2;
+                node.y = node.y + offset.y + svg_height / 2 - real_height / 2;
+            });
+        });
+    }
+
+    public void applyPacking(final List<Graph> graphs, final double w, final double h, final double node_size) {
+        applyPacking(graphs, w, h, node_size, 1);
+    }
+
+    // assign x, y to nodes while using box packing algorithm for disconnected graphs
+    public void applyPacking(final List<Graph> graphs, final double w, final double h, final double node_size, final double desired_ratio) {
+
+        if (0 == graphs.size()) {
+            return;
         }
 
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
-            if (marks[node.index]) continue;
-            explore_node(node, true);
+        init_x = 0;
+        init_y = 0;
+        svg_width = w;
+        svg_height = h;
+        real_width = 0;
+        real_height = 0;
+        min_width = 0;
+        global_bottom = 0;
+        line = new ArrayList<>();
+
+        calculate_bb(graphs, node_size);
+        apply(graphs, desired_ratio);
+        put_nodes_to_right_positions(graphs);
+    }
+
+    private int explore_node(final Node n, final boolean is_new, final Map<Integer, Integer> marks, int clusters,
+                                     final List<Graph> graphs, final Map<Integer, List<Node>> ways)
+    {
+        if (marks.containsKey(n.index)) {
+            return clusters;
+        }
+        if (is_new) {
+            clusters++;
+            graphs.add(new Graph());
+        }
+        marks.put(n.index, clusters);
+        graphs.get(clusters - 1).array.add(n);
+        List<Node> adjacent = ways.get(n.index);
+        if (null == adjacent) {
+            return clusters;
         }
 
-        function explore_node(n, is_new) {
-            if (marks[n.index] !== undefined) return;
-            if (is_new) {
-                clusters++;
-                graphs.push({ array: [] });
-            }
-            marks[n.index] = clusters;
-            graphs[clusters - 1].array.push(n);
-            var adjacent = ways[n.index];
-            if (!adjacent) return;
+        for (int j = 0; j < adjacent.size(); j++) {
+            clusters = explore_node(adjacent.get(j), false, marks, clusters, graphs, ways);
+        }
 
-            for (var j = 0; j < adjacent.length; j++) {
-                explore_node(adjacent[j], false);
+        return clusters;
+    }
+
+    /** connected components of graph returns an array of {} */
+    public List<Graph> separateGraphs(final Node[] nodes, final Link[] links) {
+        final Map<Integer, Integer> marks = new HashMap<>();
+        final Map<Integer, List<Node>> ways = new HashMap<>();
+        final List<Graph> graphs = new ArrayList<>();
+        int clusters = 0;
+
+        for (final Link link : links) {
+            final Node n1 = link.source;
+            final Node n2 = link.target;
+            if (ways.containsKey(n1.index)) {
+                ways.get(n1.index).add(n2);
+            } else {
+                ways.put(n1.index, new ArrayList<>(Arrays.asList(n2)));
             }
+
+            if (ways.containsKey(n2.index)) {
+                ways.get(n2.index).add(n1);
+            } else {
+                ways.put(n2.index, new ArrayList<>(Arrays.asList(n1)));
+            }
+        }
+
+        for (final Node node : nodes) {
+            if (marks.containsKey(node.index)) {
+                continue;
+            }
+            clusters = explore_node(node, true, marks, clusters, graphs, ways);
         }
 
         return graphs;

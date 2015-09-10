@@ -4,17 +4,19 @@ public class Node {
     /**
      * x and y will be computed by layout as the Node's centroid
      */
-    double x;
+    public double x;
     /**
      * x and y will be computed by layout as the Node's centroid
      */
-    double y;
+    public double y;
     /**
      * specify a width and height of the node's bounding box if you turn on avoidOverlaps
      */
-    double width;
+    public double width;
     /**
      * specify a width and height of the node's bounding box if you turn on avoidOverlaps
      */
-    double height;
+    public double height;
+
+    public int index;
 }
