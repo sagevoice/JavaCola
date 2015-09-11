@@ -26,7 +26,7 @@ public class TangentVisibilityGraph extends VisibilityGraph {
             for (int j = i + 1; j < n; j++) {
                 final TVGPoint[] Pj = P[j];
                 final BiTangents t = Geom.tangents(Pi, Pj);
-                for (final BiTangent c : t.all) {
+                for (final BiTangent c : t.values()) {
                     final TVGPoint source = Pi[c.t1], target = Pj[c.t2];
                     this.addEdgeIfVisible(source, target, i, j);
                 }

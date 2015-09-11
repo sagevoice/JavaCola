@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class Link {
 
-    Node   source;
-    Node   target;
-    double length;
+    public Node   source;
+    public Node   target;
+    public double length;
 }

@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class LinkWrapper {
 
-    int    source;
-    int    target;
-    double length;
+    public int    source;
+    public int    target;
+    public double length;
 }

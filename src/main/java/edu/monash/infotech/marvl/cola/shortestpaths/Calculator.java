@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 /** calculates all-pairs shortest paths or shortest paths from a single node */
 public class Calculator<T> {

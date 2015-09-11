@@ -29,8 +29,8 @@ import java.util.function.Consumer;
 //THE SOFTWARE.
 public class TreeBase<T> {
 
-    protected RBNode<T>  _root;
-    protected int        size;
+    protected RBNode<T>     _root;
+    protected int           size;
     protected Comparator<T> _comparator;
 
     TreeBase(final Comparator<T> comparator) {
