@@ -29,7 +29,7 @@ public class Iterator<T> {
 
     public TreeBase<T>          _tree;
     public ArrayList<RBNode<T>> _ancestors;
-    public RBNode<T> _cursor;
+    public RBNode<T>            _cursor;
 
     public Iterator(final TreeBase<T> tree) {
         this._tree = tree;
@@ -92,8 +92,7 @@ public class Iterator<T> {
                         break;
                     }
                 } while (this._cursor.left == save);
-            }
-            else {
+            } else {
                 this._ancestors.add(this._cursor);
                 this._maxNode(this._cursor.left);
             }

@@ -1,6 +1,7 @@
 package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.vpsc.Constraint;
+import edu.monash.infotech.marvl.cola.vpsc.ValueHolder;
 
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -127,12 +128,13 @@ public class LinkLengths {
      */
     public static <T> List<List<Integer>> stronglyConnectedComponents(final int numVertices, final T[] edges, final LinkAccessor<T> la) {
         final List<Node> nodes = new ArrayList<>();
-        int index = 0;
+        ValueHolder<Integer> valueHolder = new ValueHolder<>(0);
         final List<Node> stack = new ArrayList<>();
         final List<List<Integer>> components = new ArrayList<>();
-        final Consumer<Node> strongConnect = (v) -> {
+        final TriConsumer<Node, ValueHolder<Integer>, TriConsumer> strongConnect = (v, index, callback) -> {
             // Set the depth index for v to the smallest unused index
-            v.lowlink = index++;
+            v.lowlink = index.get();
+            index.set(index.get() + 1);
             v.index = v.lowlink;
             stack.add(v);
             v.onStack = true;
@@ -141,7 +143,7 @@ public class LinkLengths {
             for (final Node w : v.out) {
                 if (0 > w.index) {
                     // Successor w has not yet been visited; recurse on it
-                    strongConnect.accept(w);
+                    callback.accept(w, index, callback);
                     v.lowlink = Math.min(v.lowlink, w.lowlink);
                 } else if (w.onStack) {
                     // Successor w is in stack S and hence in the current SCC
@@ -175,7 +177,7 @@ public class LinkLengths {
         }
         for (final Node v : nodes) {
             if (0 > v.index) {
-                strongConnect.accept(v);
+                strongConnect.accept(v, valueHolder, strongConnect);
             }
         }
         return components;

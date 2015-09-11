@@ -81,7 +81,7 @@ public class Solver {
             }
         }
         if (deletePoint != n &&
-            (minSlack < Solver.ZERO_UPPERBOUND && !v.active || v.equality))
+            (Solver.ZERO_UPPERBOUND > minSlack && !v.active || v.equality))
         {
             l.set(deletePoint, l.get(n - 1));
             l.remove(n - 1);
@@ -97,7 +97,7 @@ public class Solver {
         }
         this.bs.split(this.inactive);
         Constraint v = null;
-        while (null != (v = this.mostViolated()) && (v.equality || v.slack() < Solver.ZERO_UPPERBOUND && !v.active)) {
+        while (null != (v = this.mostViolated()) && (v.equality || Solver.ZERO_UPPERBOUND > v.slack() && !v.active)) {
             final Block lb = v.left.block, rb = v.right.block;
             if (lb != rb) {
                 this.bs.merge(v);

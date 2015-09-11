@@ -1,7 +1,8 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
+import edu.monash.infotech.marvl.cola.TriConsumer;
+
 import java.util.ArrayList;
-import java.util.function.BiConsumer;
 
 public class Variable {
 
@@ -36,8 +37,8 @@ public class Variable {
     }
 
     // visit neighbours by active constraints within the same block
-    public void visitNeighbours(final Variable prev, final BiConsumer<Constraint, Variable> f) {
-        this.cOut.forEach(c -> {if (c.active && prev != c.right) { f.accept(c, c.right); }});
-        this.cIn.forEach(c -> {if (c.active && prev != c.left) { f.accept(c, c.left); }});
+    public void visitNeighbours(final Variable prev, final TriConsumer<Constraint, Variable, ValueHolder> f, final ValueHolder value) {
+        this.cOut.forEach(c -> {if (c.active && prev != c.right) { f.accept(c, c.right, value); }});
+        this.cIn.forEach(c -> {if (c.active && prev != c.left) { f.accept(c, c.left, value); }});
     }
 }

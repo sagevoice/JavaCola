@@ -1,12 +1,14 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
+import edu.monash.infotech.marvl.cola.TriConsumer;
+
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class Block {
 
-    public ArrayList<Variable> vars = new ArrayList<>();
+    public List<Variable> vars = new ArrayList<>();
     public double        posn;
     public PositionStats ps;
     public int           blockInd;
@@ -26,71 +28,80 @@ public class Block {
 
     // move the block where it needs to be to minimize cost
     public void updateWeightedPosition() {
-        this.ps.AB = this.ps.AD = this.ps.A2 = 0;
-        for (int i = 0, n = this.vars.size(); i < n; ++i) {
-            this.ps.addVariable(this.vars.get(i));
+        this.ps.AB = 0;
+        this.ps.AD = 0;
+        this.ps.A2 = 0;
+        for (final Variable var : this.vars) {
+            this.ps.addVariable(var);
         }
         this.posn = this.ps.getPosn();
     }
 
-    private double compute_lm(final Variable v, final Variable u, final Consumer<Constraint> postAction) {
-        double dfdv = v.dfdv();
-        BiConsumer<Constraint, Variable> f =
-                v.visitNeighbours(u, (c, next) -> {
-                    double _dfdv = this.compute_lm(next, v, postAction);
-                    if (next == c.right) {
-                        dfdv += _dfdv * c.left.scale;
-                        c.lm = _dfdv;
-                    } else {
-                        dfdv += _dfdv * c.right.scale;
-                        c.lm = -_dfdv;
-                    }
-                    postAction.accept(c);
-                });
-        return dfdv / v.scale;
+    private double compute_lm(final Variable v, final Variable u, final BiConsumer<Constraint, ValueHolder> postAction,
+                              final ValueHolder postValue)
+    {
+        final ValueHolder<Double> valueHolder = new ValueHolder<>(v.dfdv());
+        v.visitNeighbours(u, (c, next, value) -> {
+            double _dfdv = this.compute_lm(next, v, postAction, postValue);
+            final ValueHolder<Double> dfdv = value;
+            if (next == c.right) {
+                dfdv.set(dfdv.get() + _dfdv * c.left.scale);
+                c.lm = _dfdv;
+            } else {
+                dfdv.set(dfdv.get() + _dfdv * c.right.scale);
+                c.lm = -_dfdv;
+            }
+            postAction.accept(c, postValue);
+        }, valueHolder);
+        return valueHolder.get() / v.scale;
     }
 
     private void populateSplitBlock(final Variable v, final Variable prev) {
-        v.visitNeighbours(prev, (c, next) -> {
+        v.visitNeighbours(prev, (c, next, value) -> {
             next.offset = v.offset + (next == c.right ? c.gap : -c.gap);
             this.addVariable(next);
             this.populateSplitBlock(next, v);
-        });
+        }, null);
     }
 
     // calculate lagrangian multipliers on constraints and
     // find the active constraint in this block with the smallest lagrangian.
     // if the lagrangian is negative, then the constraint is a split candidate.
     public Constraint findMinLM() {
-        Constraint m = null;
-        this.compute_lm(this.vars.get(0), null, c -> {
-            if (!c.equality && (null == m || c.lm < m.lm)) {
-                m = c;
+        final ValueHolder<Constraint> valueHolder = new ValueHolder<>(null);
+        this.compute_lm(this.vars.get(0), null, (c, value) -> {
+            final ValueHolder<Constraint> m = value;
+            if (!c.equality && (null == m.get() || c.lm < m.get().lm)) {
+                m.set(c);
             }
-        });
-        return m;
+        }, valueHolder);
+        return valueHolder.get();
     }
 
     private Constraint findMinLMBetween(final Variable lv, final Variable rv) {
-        this.compute_lm(lv, null, (c) -> {});
-        Constraint m = null;
-        this.findPath(lv, null, rv, (c, next) -> {
-            if (!c.equality && c.right == next && (m == null || c.lm < m.lm)) {
-                m = c;
+        this.compute_lm(lv, null, (c, v) -> {}, null);
+        final ValueHolder<Constraint> valueHolder = new ValueHolder<>(null);
+        this.findPath(lv, null, rv, (c, next, value) -> {
+            final ValueHolder<Constraint> m = value;
+            if (!c.equality && c.right == next && (null == m.get() || c.lm < m.get().lm)) {
+                m.set(c);
             }
-        });
-        return m;
+        }, valueHolder);
+        return valueHolder.get();
     }
 
-    private boolean findPath(final Variable v, final Variable prev, final Variable to, final BiConsumer<Constraint, Variable> visit) {
-        boolean endFound = false;
-        v.visitNeighbours(prev, (c, next) -> {
-            if (!endFound && (next == to || this.findPath(next, v, to, visit))) {
-                endFound = true;
-                visit.accept(c, next);
+    private Boolean findPath(final Variable v, final Variable prev, final Variable to,
+                             final TriConsumer<Constraint, Variable, ValueHolder> visit, final ValueHolder visitValue)
+    {
+        final ValueHolder<Boolean> valueHolder = new ValueHolder<>(false);
+        v.visitNeighbours(prev, (c, next, value) -> {
+            final ValueHolder<Boolean> endFound = value;
+            if (!endFound.get() && (next == to || this.findPath(next, v, to, visit, visitValue))) {
+                endFound.set(true);
+                visit.accept(c, next, visitValue);
             }
-        });
-        return endFound;
+        }, valueHolder);
+        return valueHolder.get();
     }
 
     // Search active constraint tree from u to see if there is a directed path to v.
@@ -123,7 +134,7 @@ public class Block {
     public BlockSplit splitBetween(final Variable vl, final Variable vr) {
         final Constraint c = this.findMinLMBetween(vl, vr);
         if (null != c) {
-            Block[] bs = Block.split(c);
+            final Block[] bs = Block.split(c);
             return new BlockSplit(c, bs[0], bs[1]);
         }
         // couldn't find a split point - for example the active path is all equality constraints

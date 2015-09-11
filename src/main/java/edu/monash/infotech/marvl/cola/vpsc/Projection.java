@@ -83,8 +83,8 @@ public class Projection {
 
     private Constraint createSeparation(Constraint c) {
         return new Constraint(
-                this.nodes[c.left].variable,
-                this.nodes[c.right].variable,
+                this.nodes[c.leftIndex].variable,
+                this.nodes[c.rightIndex].variable,
                 c.gap,
                 c.equality);
     }
