@@ -10,9 +10,9 @@ import java.util.function.Consumer;
 
 public class PowerGraph<T> {
 
-    public Groups getGroups(final Node[] nodes, final T[] links, final LinkTypeAccessor<T> la, final Group rootGroup) {
-        final int n = nodes.length;
-        final Configuration<T> c = new Configuration<>(n, Arrays.asList(links), la, rootGroup);
+    public Groups getGroups(final List<Node> nodes, final List<T> links, final LinkTypeAccessor<T> la, final Group rootGroup) {
+        final int n = nodes.size();
+        final Configuration<T> c = new Configuration<>(n, links, la, rootGroup);
         while (c.greedyMerge()) {}
         final List<PowerEdge> powerEdges = new ArrayList<>();
         final List<Group> g = c.getGroupHierarchy(powerEdges);
@@ -20,7 +20,7 @@ public class PowerGraph<T> {
             final Consumer<String> f = (end) -> {
                 Object v = e.get(end);
                 if (v instanceof Number) {
-                    e.set(end, nodes[((Number)v).intValue()]);
+                    e.set(end, nodes.get(((Number)v).intValue()));
                 }
             };
             f.accept("source");

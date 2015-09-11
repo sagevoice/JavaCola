@@ -165,8 +165,8 @@ public class GridRouter<T> {
     }
 
     private double avg(List<Double> a) {
-        final Optional<Double> result = a.stream().reduce((x, y) -> x + y);
-        return result.get() / a.size();
+        final Double result = a.stream().reduce(new Double(0.0), (x, y) -> x + y);
+        return result / a.size();
     }
 
     // in the given axis, find sets of leaves overlapping in that axis
@@ -416,13 +416,13 @@ public class GridRouter<T> {
     // @param target function to retrieve the index of the target node for a given edge
     // @returns an array giving, for each edge, an array of segments, each segment a pair of points in an array
     public List<List<Segment>> routeEdges(final List<LinkWrapper> edges, final double nudgeGap, final ToIntFunction<LinkWrapper> source,
-                                                    final ToIntFunction<LinkWrapper> target)
+                                          final ToIntFunction<LinkWrapper> target)
     {
         List<GridPath<Vert>> routePaths = edges.stream().map(e -> this.route(source.applyAsInt(e), target.applyAsInt(e)))
-                                                    .collect(Collectors.toList());
+                                               .collect(Collectors.toList());
         ToBooleanBiFunction<Integer, Integer> order = GridRouter.orderEdges(routePaths);
         final List<List<Segment>> routes = routePaths.stream().map(e -> GridRouter.makeSegments(e))
-                                                         .collect(Collectors.toList());
+                                                     .collect(Collectors.toList());
         GridRouter.nudgeSegments(routes, "x", "y", order, nudgeGap);
         GridRouter.nudgeSegments(routes, "y", "x", order, nudgeGap);
         GridRouter.unreverseEdges(routes, routePaths);
@@ -583,8 +583,8 @@ public class GridRouter<T> {
                 getTarget = e -> e.target;
         final ToDoubleFunction<LinkWrapper> getLength = e -> e.length;
 
-        final Calculator<LinkWrapper> shortestPathCalculator = new Calculator<>(verts.size(), passableEdges
-                .toArray(new LinkWrapper[passableEdges.size()]), getSource, getTarget, getLength);
+        final Calculator<LinkWrapper> shortestPathCalculator = new Calculator<>(verts.size(), passableEdges, getSource, getTarget,
+                                                                                getLength);
         final TriFunction<Integer, Integer, Integer, Double> bendPenalty = (u, v, w) -> {
             final Vert a = this.verts.get(u), b = this.verts.get(v), c = this.verts.get(w);
             final double dx = Math.abs(c.x - a.x), dy = Math.abs(c.y - a.y);

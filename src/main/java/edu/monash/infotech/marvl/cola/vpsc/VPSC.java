@@ -1,5 +1,6 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
+import edu.monash.infotech.marvl.cola.Link;
 import edu.monash.infotech.marvl.cola.geom.Point;
 
 import java.util.ArrayList;

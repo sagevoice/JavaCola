@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Point {
 
-    public double x;
-    public double y;
+    public double x = Double.NaN;
+    public double y = Double.NaN;
 
     public double get(final String key) {
         if ("x".equals(key)) {

@@ -1,118 +1,132 @@
-﻿/**
- * Use cola to do a layout in 3D!! Yay.
- * Pretty simple for the moment.
- */
-module cola {
-    export class Link3D {
-        length: number;
-        constructor(public source: number, public target: number) { }
-        actualLength(x: number[][]) {
-            return Math.sqrt(
-                x.reduce((c: number, v: number[]) => {
-                    const dx = v[this.target] - v[this.source];
-                    return c + dx * dx;
-                }, 0));
-        }
+package edu.monash.infotech.marvl.cola;
+
+import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
+import edu.monash.infotech.marvl.cola.vpsc.Constraint;
+import edu.monash.infotech.marvl.cola.vpsc.Projection;
+
+import java.util.Arrays;
+import java.util.List;
+
+/** Use cola to do a layout in 3D!! Yay. Pretty simple for the moment. */
+public class Layout3D {
+
+    public static final List<String> dims = Arrays.asList("x", "y", "z");
+    public static final int          k    = Layout3D.dims.size();
+    public double[][]       result;
+    public List<Constraint> constraints;
+    public List<Node3D>     nodes;
+    public List<Link3D>     links;
+    public double           idealLinkLength;
+    public boolean          useJaccardLinkLengths;
+    public Descent          descent;
+
+    Layout3D(final List<Node3D> nodes, final List<Link3D> links) {
+        this(nodes, links, 1);
     }
-    export class Node3D implements vpsc.GraphNode {
-        // if fixed, layout will not move the node from its specified starting position
-        fixed: boolean;
-        width: number;
-        height: number;
-        px: number;
-        py: number;
-        bounds: vpsc.Rectangle;
-        variable: vpsc.Variable;
-        constructor(
-            public x: number = 0,
-            public y: number = 0,
-            public z: number = 0) { }
+
+    Layout3D(final List<Node3D> nodes, final List<Link3D> links, final double idealLinkLength) {
+        this.nodes = nodes;
+        this.links = links;
+        this.idealLinkLength = idealLinkLength;
+        this.result = new double[Layout3D.k][0];
+        for (int i = 0; i < Layout3D.k; ++i) {
+            this.result[i] = new double[nodes.size()];
+        }
+        for (int i = 0; i < nodes.size(); ++i) {
+            final Node3D v = nodes.get(i);
+            for (final String dim : Layout3D.dims) {
+                if (Double.isNaN(v.get(dim))) {
+                    v.set(dim, Math.random());
+                }
+            }
+            this.result[0][i] = v.x;
+            this.result[1][i] = v.y;
+            this.result[2][i] = v.z;
+        }
+        this.useJaccardLinkLengths = true;
     }
-    export class Layout3D {
-        static dims = ['x', 'y', 'z'];
-        static k = Layout3D.dims.length;
-        result: number[][];
-        constraints: any[] = null;
 
-        constructor(public nodes: Node3D[], public links: Link3D[], public idealLinkLength: number = 1) {
-            this.result = new Array(Layout3D.k);
-            for (var i = 0; i < Layout3D.k; ++i) {
-                this.result[i] = new Array(nodes.length);
-            }
-            nodes.forEach((v, i) => {
-                for (var dim of Layout3D.dims) {
-                    if (typeof v[dim] == 'undefined') v[dim] = Math.random();
-                }
-                this.result[0][i] = v.x;
-                this.result[1][i] = v.y;
-                this.result[2][i] = v.z;
-            });
-        };
+    public double linkLength(final Link3D l) {
+        return l.actualLength(this.result);
+    }
 
-        linkLength(l: Link3D): number {
-            return l.actualLength(this.result);
+    private class LinkAccessor implements LinkLengthAccessor<Link3D> {
+
+        protected LinkAccessor() {
         }
 
-        useJaccardLinkLengths: boolean = true;
-
-        descent: cola.Descent;
-        start(iterations: number = 100): Layout3D {
-            const n = this.nodes.length;
-
-            var linkAccessor = new LinkAccessor();
-
-            if (this.useJaccardLinkLengths)
-                cola.jaccardLinkLengths(this.links, linkAccessor, 1.5);
-
-            this.links.forEach(e => e.length *= this.idealLinkLength);
-
-            // Create the distance matrix that Cola needs
-            const distanceMatrix = (new cola.shortestpaths.Calculator(n, this.links,
-                e=> e.source, e=> e.target, e => e.length)).DistanceMatrix();
-
-            const D = cola.Descent.createSquareMatrix(n, (i, j) => distanceMatrix[i][j]);
-
-            // G is a square matrix with G[i][j] = 1 iff there exists an edge between node i and node j
-            // otherwise 2.
-            var G = cola.Descent.createSquareMatrix(n, function () { return 2 });
-            this.links.forEach(({ source, target }) => G[source][target] = G[target][source] = 1);
-
-            this.descent = new cola.Descent(this.result, D);
-            this.descent.threshold = 1e-3;
-            this.descent.G = G;
-            //let constraints = this.links.map(e=> <any>{
-            //    axis: 'y', left: e.source, right: e.target, gap: e.length*1.5
-            //});
-            if (this.constraints) 
-                this.descent.project = new Projection(<vpsc.GraphNode[]>this.nodes, null, null, this.constraints).projectFunctions();
-
-            for (var i = 0; i < this.nodes.length; i++) {
-                var v = this.nodes[i];
-                if (v.fixed) {
-                    this.descent.locks.add(i, [v.x, v.y, v.z]);
-                }
-            }
-
-            this.descent.run(iterations);
-            return this;
+        @Override
+        public int getSourceIndex(final Link3D l) {
+            return l.source;
         }
 
-        tick(): number {
-            this.descent.locks.clear();
-            for (var i = 0; i < this.nodes.length; i++) {
-                var v = this.nodes[i];
-                if (v.fixed) {
-                    this.descent.locks.add(i, [v.x, v.y, v.z]);
-                }
-            }
-            return this.descent.rungeKutta();
+        @Override
+        public int getTargetIndex(final Link3D l) {
+            return l.target;
+        }
+
+        @Override
+        public void setLength(final Link3D l, final double value) {
+            l.length = value;
         }
     }
 
-    class LinkAccessor implements cola.LinkLengthAccessor<any> {
-        getSourceIndex(e: any): number { return e.source; }
-        getTargetIndex(e: any): number { return e.target; }
-        getLength(e: any): number { return e.length; }
-        setLength(e: any, l: number) { e.length = l; }
+    public Layout3D start() {
+        return start(100);
+    }
+
+    public Layout3D start(final int iterations) {
+        final int n = this.nodes.size();
+
+        final LinkAccessor linkAccessor = new LinkAccessor();
+
+        if (this.useJaccardLinkLengths) {
+            LinkLengths.jaccardLinkLengths(this.links, linkAccessor, 1.5);
+        }
+
+        this.links.forEach(e -> e.length *= this.idealLinkLength);
+
+        // Create the distance matrix that Cola needs
+        final double[][] distanceMatrix = (new Calculator<>(n, this.links,
+                                                            e -> e.source, e -> e.target, e -> e.length)).DistanceMatrix();
+
+        final double[][] D = Descent.createSquareMatrix(n, (i, j) -> distanceMatrix[i][j]);
+
+        // G is a square matrix with G[i][j] = 1 iff there exists an edge between node i and node j
+        // otherwise 2.
+        final double[][] G = Descent.createSquareMatrix(n, (i, j) -> { return 2; });
+        this.links.forEach((e) -> {G[e.source][e.target] = 1; G[e.target][e.source] = 1;});
+
+        this.descent = new Descent(this.result, D);
+        this.descent.threshold = 1e-3;
+        this.descent.G = G;
+        //let constraints = this.links.map(e=> <any>{
+        //    axis: 'y', left: e.source, right: e.target, gap: e.length*1.5
+        //});
+        if (null != this.constraints) {
+            this.descent.project = new Projection(this.nodes, null, null, this.constraints).projectFunctions();
+        }
+
+        for (int i = 0; i < this.nodes.size(); i++) {
+            final Node3D v = this.nodes.get(i);
+            if (0 < (v.fixed & 1)) {
+                this.descent.locks.add(i, new double[] {v.x, v.y, v.z});
+            }
+        }
+
+        this.descent.run(iterations);
+        return this;
+    }
+
+    public double tick() {
+        this.descent.locks.clear();
+        for (int i = 0; i < this.nodes.size(); i++) {
+            final Node3D v = this.nodes.get(i);
+            if (0 < (v.fixed & 1)) {
+                this.descent.locks.add(i, new double[] {v.x, v.y, v.z});
+            }
+        }
+        return this.descent.rungeKutta();
     }
 }
+

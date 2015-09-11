@@ -16,24 +16,24 @@ public class Projection {
     private List<Constraint>  xConstraints;
     private List<Constraint>  yConstraints;
     private IndexedVariable[] variables;
-    private GraphNode[]       nodes;
-    private Group[]           groups;
+    private List<GraphNode>   nodes;
+    private List<Group>       groups;
     private Group             rootGroup;
     private boolean           avoidOverlaps;
 
-    public Projection(final GraphNode[] nodes, final Group[] groups) {
+    public Projection(final List<GraphNode> nodes, final List<Group> groups) {
         this(nodes, groups, null);
     }
 
-    public Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup) {
+    public Projection(final List<GraphNode> nodes, final List<Group> groups, final Group rootGroup) {
         this(nodes, groups, rootGroup, null);
     }
 
-    public Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup, final Constraint[] constraints) {
+    public Projection(final List<GraphNode> nodes, final List<Group> groups, final Group rootGroup, final List<Constraint> constraints) {
         this(nodes, groups, rootGroup, constraints, false);
     }
 
-    public Projection(final GraphNode[] nodes, final Group[] groups, final Group rootGroup, final Constraint[] constraints,
+    public Projection(final List<GraphNode> nodes, final List<Group> groups, final Group rootGroup, final List<Constraint> constraints,
                       final boolean avoidOverlaps)
     {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
@@ -43,13 +43,13 @@ public class Projection {
         this.rootGroup = rootGroup;
         this.avoidOverlaps = avoidOverlaps;
 
-        int vlen = nodes.length;
+        int vlen = nodes.size();
         if (avoidOverlaps && null != rootGroup && null != rootGroup.groups) {
-            vlen += 2 * groups.length;
+            vlen += 2 * groups.size();
         }
         this.variables = new IndexedVariable[vlen];
-        for (int i = 0; i < nodes.length; i++) {
-            final GraphNode v = nodes[i];
+        for (int i = 0; i < nodes.size(); i++) {
+            final GraphNode v = nodes.get(i);
             v.variable = new IndexedVariable(i, 1.0);
             this.variables[i] = v.variable;
         }
@@ -59,7 +59,7 @@ public class Projection {
         }
 
         if (avoidOverlaps && null != rootGroup && null != rootGroup.groups) {
-            Arrays.stream(nodes).forEach(v -> {
+            nodes.forEach(v -> {
                 if (0 == v.width || 0 == v.height) {
                     //If undefined, default to nothing
                     v.bounds = new Rectangle(v.x, v.x, v.y, v.y);
@@ -69,9 +69,9 @@ public class Projection {
                 v.bounds = new Rectangle(v.x - w2, v.x + w2, v.y - h2, v.y + h2);
             });
             VPSC.computeGroupBounds(rootGroup);
-            int i = nodes.length;
-            for (int j = 0; j < groups.length; j++) {
-                final Group g = groups[j];
+            int i = nodes.size();
+            for (int j = 0; j < groups.size(); j++) {
+                final Group g = groups.get(j);
 
                 g.minVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
                 this.variables[i] = g.minVar;
@@ -83,8 +83,8 @@ public class Projection {
 
     private Constraint createSeparation(Constraint c) {
         return new Constraint(
-                this.nodes[c.leftIndex].variable,
-                this.nodes[c.rightIndex].variable,
+                this.nodes.get(c.leftIndex).variable,
+                this.nodes.get(c.rightIndex).variable,
                 c.gap,
                 c.equality);
     }
@@ -101,7 +101,7 @@ public class Projection {
             axis = "x";
             dim = "width";
         }
-        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes[o.node]).sorted((a, b) -> (int)(a.get(axis) - b.get(axis)))
+        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes.get(o.node)).sorted((a, b) -> (int)(a.get(axis) - b.get(axis)))
                                 .collect(Collectors.toList()).toArray(new GraphNode[c.offsets.size()]);
         GraphNode p = null;
         for (int i = 0; i < vs.length; i++) {
@@ -114,24 +114,24 @@ public class Projection {
     }
 
     private void createAlignment(final Constraint c) {
-        Variable u = this.nodes[c.offsets.get(0).node].variable;
+        Variable u = this.nodes.get(c.offsets.get(0).node).variable;
         this.makeFeasible(c);
         final List<Constraint> cs = "x".equals(c.axis) ? this.xConstraints : this.yConstraints;
         c.offsets.subList(1, c.offsets.size()).forEach(o -> {
-            Variable v = this.nodes[o.node].variable;
+            Variable v = this.nodes.get(o.node).variable;
             cs.add(new Constraint(u, v, o.offset, true));
         });
     }
 
-    private void createConstraints(final Constraint[] constraints) {
+    private void createConstraints(final List<Constraint> constraints) {
         final Function<Constraint, Boolean> isSep = c -> null == c.type || "separation".equals(c.type);
-        this.xConstraints = Arrays.stream(constraints)
+        this.xConstraints = constraints.stream()
                                   .filter(c -> "x".equals(c.axis) && isSep.apply(c))
                                   .map(c -> this.createSeparation(c)).collect(Collectors.toList());
-        this.yConstraints = Arrays.stream(constraints)
+        this.yConstraints = constraints.stream()
                                   .filter(c -> "y".equals(c.axis) && isSep.apply(c))
                                   .map(c -> this.createSeparation(c)).collect(Collectors.toList());
-        Arrays.stream(constraints)
+        constraints.stream()
               .filter(c -> "alignment".equals(c.type))
               .forEach(c -> this.createAlignment(c));
     }
@@ -139,9 +139,9 @@ public class Projection {
     private void setupVariablesAndBounds(final double[] x0, final double[] y0, final double[] desired,
                                          final ToDoubleFunction<GraphNode> getDesired)
     {
-        for (int i = 0; i < nodes.length; i++) {
-            final GraphNode v = nodes[i];
-            if (v.fixed) {
+        for (int i = 0; i < nodes.size(); i++) {
+            final GraphNode v = nodes.get(i);
+            if (0 < (v.fixed & 1)) {
                 v.variable.weight = 1000;
                 desired[i] = getDesired.applyAsDouble(v);
             } else {
@@ -217,9 +217,9 @@ public class Projection {
             cs = Stream.concat(cs.stream(), Arrays.stream(generateConstraints.apply(this.rootGroup))).collect(Collectors.toList());
         }
         this.solve(this.variables, cs.toArray(new Constraint[cs.size()]), start, desired);
-        Arrays.stream(this.nodes).forEach(updateNodeBounds);
+        this.nodes.forEach(updateNodeBounds);
         if (null != this.rootGroup && this.avoidOverlaps) {
-            Arrays.stream(this.groups).forEach(updateGroupBounds);
+            this.groups.forEach(updateGroupBounds);
         }
     }
 

@@ -5,7 +5,6 @@ import edu.monash.infotech.marvl.cola.vpsc.ValueHolder;
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.ToDoubleBiFunction;
 
 public class LinkLengths {
@@ -33,7 +32,7 @@ public class LinkLengths {
         return n;
     }
 
-    public static <T> Map<Integer, Map<Integer, Boolean>> getNeighbours(final T[] links, final LinkAccessor<T> la) {
+    public static <T> Map<Integer, Map<Integer, Boolean>> getNeighbours(final List<T> links, final LinkAccessor<T> la) {
         final Map<Integer, Map<Integer, Boolean>> neighbours = new HashMap<>();
         final BiConsumer<Integer, Integer> addNeighbours = (u, v) -> {
             if (!neighbours.containsKey(u)) {
@@ -41,7 +40,7 @@ public class LinkLengths {
             }
             neighbours.get(u).put(v, true);
         };
-        Arrays.stream(links).forEach(e -> {
+        links.forEach(e -> {
             final int u = la.getSourceIndex(e), v = la.getTargetIndex(e);
             addNeighbours.accept(u, v);
             addNeighbours.accept(v, u);
@@ -50,36 +49,35 @@ public class LinkLengths {
     }
 
     // modify the lengths of the specified links by the result of function f weighted by w
-    public static <T> void computeLinkLengths(final T[] links, final double w,
+    public static <T> void computeLinkLengths(final List<T> links, final double w,
                                               ToDoubleBiFunction<Map<Integer, Boolean>, Map<Integer, Boolean>> f, LinkLengthAccessor<T> la)
     {
         final Map<Integer, Map<Integer, Boolean>> neighbours = getNeighbours(links, la);
-        Arrays.stream(links).forEach(l -> {
+        links.forEach(l -> {
             final Map<Integer, Boolean> a = neighbours.get(la.getSourceIndex(l));
             final Map<Integer, Boolean> b = neighbours.get(la.getTargetIndex(l));
             la.setLength(l, 1 + w * f.applyAsDouble(a, b));
         });
     }
 
-    public static <T> void symmetricDiffLinkLengths(final T[] links, final LinkLengthAccessor<T> la) {
+    public static <T> void symmetricDiffLinkLengths(final List<T> links, final LinkLengthAccessor<T> la) {
         LinkLengths.symmetricDiffLinkLengths(links, la, 1);
     }
 
     /**
      * modify the specified link lengths based on the symmetric difference of their neighbours
      *
-     * @class symmetricDiffLinkLengths
      */
-    public static <T> void symmetricDiffLinkLengths(final T[] links, final LinkLengthAccessor<T> la, final double w) {
+    public static <T> void symmetricDiffLinkLengths(final List<T> links, final LinkLengthAccessor<T> la, final double w) {
         computeLinkLengths(links, w, (a, b) -> Math.sqrt(unionCount(a, b) - intersectionCount(a, b)), la);
     }
 
-    public static <T> void jaccardLinkLengths(final T[] links, final LinkLengthAccessor<T> la) {
+    public static <T> void jaccardLinkLengths(final List<T> links, final LinkLengthAccessor<T> la) {
         jaccardLinkLengths(links, la, 1);
     }
 
     /** modify the specified links lengths based on the jaccard difference between their neighbours */
-    public static <T> void jaccardLinkLengths(final T[] links, final LinkLengthAccessor<T> la, final double w) {
+    public static <T> void jaccardLinkLengths(final List<T> links, final LinkLengthAccessor<T> la, final double w) {
         computeLinkLengths(links, w, (a, b) ->
                 1.1 > Math.min(a.keySet().size(), b.keySet().size()) ? 0 : intersectionCount(a, b) / unionCount(a, b)
                 , la);
@@ -100,7 +98,7 @@ public class LinkLengths {
     }
 
     /** generate separation constraints for all edges unless both their source and sink are in the same strongly connected component */
-    public static <T> List<Constraint> generateDirectedEdgeConstraints(final int n, final T[] links, final String axis,
+    public static <T> List<Constraint> generateDirectedEdgeConstraints(final int n, final List<T> links, final String axis,
                                                                        final LinkSepAccessor<T> la)
     {
         final List<List<Integer>> components = stronglyConnectedComponents(n, links, la);
@@ -111,9 +109,9 @@ public class LinkLengths {
             c.forEach(v -> nodes.set(v, j));
         }
         final List<Constraint> constraints = new ArrayList<>();
-        Arrays.stream(links).forEach(l -> {
+        links.forEach(l -> {
             final int ui = la.getSourceIndex(l), vi = la.getTargetIndex(l);
-            final Integer u = nodes.get(ui), v = nodes.get(vi);
+            final int u = nodes.get(ui), v = nodes.get(vi);
             if (u != v) {
                 constraints.add(new Constraint(axis, ui, vi, la.getMinSeparation(l)));
             }
@@ -126,7 +124,7 @@ public class LinkLengths {
      * strongly connected components. a vertex not in a SCC of two or more nodes is it's own SCC. adaptation of
      * https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
      */
-    public static <T> List<List<Integer>> stronglyConnectedComponents(final int numVertices, final T[] edges, final LinkAccessor<T> la) {
+    public static <T> List<List<Integer>> stronglyConnectedComponents(final int numVertices, final List<T> edges, final LinkAccessor<T> la) {
         final List<Node> nodes = new ArrayList<>();
         ValueHolder<Integer> valueHolder = new ValueHolder<>(0);
         final List<Node> stack = new ArrayList<>();

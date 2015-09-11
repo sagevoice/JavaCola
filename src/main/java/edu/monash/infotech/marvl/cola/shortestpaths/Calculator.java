@@ -15,13 +15,13 @@ public class Calculator<T> {
 
     private Node[] neighbours;
     public  int    n;
-    public  T[]    es;
+    public  List<T>    es;
 
     /**
      * @param n  {number} number of nodes
      * @param es {Edge[]} array of edges
      */
-    public Calculator(final int n, final T[] es, ToIntFunction<T> getSourceIndex, ToIntFunction<T> getTargetIndex,
+    public Calculator(final int n, final List<T> es, ToIntFunction<T> getSourceIndex, ToIntFunction<T> getTargetIndex,
                       ToDoubleFunction<T> getLength)
     {
         this.n = n;
@@ -33,9 +33,9 @@ public class Calculator<T> {
             this.neighbours[i] = new Node(i);
         }
 
-        i = this.es.length;
+        i = this.es.size();
         while (0 < i--) {
-            T e = this.es[i];
+            final T e = this.es.get(i);
             int u = getSourceIndex.applyAsInt(e), v = getTargetIndex.applyAsInt(e);
             double d = getLength.applyAsDouble(e);
             this.neighbours[u].neighbours.add(new Neighbour(v, d));

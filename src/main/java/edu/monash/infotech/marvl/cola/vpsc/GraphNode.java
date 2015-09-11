@@ -6,11 +6,16 @@ public class GraphNode extends Point {
 
     public Rectangle       bounds;
     public IndexedVariable variable;
-    public boolean         fixed;
+    // if fixed, layout will not move the node from its specified starting position
+    public int             fixed;
     public double          width;
     public double          height;
-    public double          px;
-    public double          py;
+    public double          px = Double.NaN;
+    public double          py = Double.NaN;
+    public int             index;
+    public Group           parent;
+
+    public Rectangle       innerBounds;
 
     @Override
     public double get(final String key) {

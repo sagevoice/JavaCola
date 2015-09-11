@@ -5,13 +5,14 @@ import java.util.List;
 public class Group {
 
     public Rectangle       bounds;
-    public double          padding;
+    public double          padding = Double.NaN;
     public double          stiffness;
     public List<Leaf>      leaves;
     public List<Group>     groups;
     public IndexedVariable minVar;
     public IndexedVariable maxVar;
     public int             id;
+    public Group           parent;
 
     public Group() {
     }
@@ -22,5 +23,10 @@ public class Group {
 
     public Group(final Rectangle bounds) {
         this.bounds = bounds;
+    }
+
+    public Group(final List<Leaf> leaves, final List<Group> groups) {
+        this.leaves = leaves;
+        this.groups = groups;
     }
 }

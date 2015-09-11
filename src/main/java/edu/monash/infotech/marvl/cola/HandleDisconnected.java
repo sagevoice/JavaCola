@@ -1,6 +1,7 @@
-﻿package edu.monash.infotech.marvl.cola;
+package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.geom.Point;
+import edu.monash.infotech.marvl.cola.vpsc.GraphNode;
 
 import java.util.*;
 
@@ -31,7 +32,7 @@ public class HandleDisconnected {
         double min_x = Double.MAX_VALUE, min_y = Double.MAX_VALUE,
                 max_x = 0, max_y = 0;
 
-        for (final Node v : graph.array) {
+        for (final GraphNode v : graph.array) {
             double w = 0 < v.width ? v.width : node_size;
             double h = 0 < v.height ? v.height : node_size;
             w /= 2;
@@ -236,8 +237,8 @@ public class HandleDisconnected {
         put_nodes_to_right_positions(graphs);
     }
 
-    private int explore_node(final Node n, final boolean is_new, final Map<Integer, Integer> marks, int clusters,
-                                     final List<Graph> graphs, final Map<Integer, List<Node>> ways)
+    private int explore_node(final GraphNode n, final boolean is_new, final Map<Integer, Integer> marks, int clusters,
+                             final List<Graph> graphs, final Map<Integer, List<GraphNode>> ways)
     {
         if (marks.containsKey(n.index)) {
             return clusters;
@@ -248,7 +249,7 @@ public class HandleDisconnected {
         }
         marks.put(n.index, clusters);
         graphs.get(clusters - 1).array.add(n);
-        List<Node> adjacent = ways.get(n.index);
+        List<GraphNode> adjacent = ways.get(n.index);
         if (null == adjacent) {
             return clusters;
         }
@@ -261,15 +262,15 @@ public class HandleDisconnected {
     }
 
     /** connected components of graph returns an array of {} */
-    public List<Graph> separateGraphs(final Node[] nodes, final Link[] links) {
+    public List<Graph> separateGraphs(final List<GraphNode> nodes, final List<Link> links) {
         final Map<Integer, Integer> marks = new HashMap<>();
-        final Map<Integer, List<Node>> ways = new HashMap<>();
+        final Map<Integer, List<GraphNode>> ways = new HashMap<>();
         final List<Graph> graphs = new ArrayList<>();
         int clusters = 0;
 
         for (final Link link : links) {
-            final Node n1 = link.source;
-            final Node n2 = link.target;
+            final GraphNode n1 = link.source;
+            final GraphNode n2 = link.target;
             if (ways.containsKey(n1.index)) {
                 ways.get(n1.index).add(n2);
             } else {
@@ -283,7 +284,7 @@ public class HandleDisconnected {
             }
         }
 
-        for (final Node node : nodes) {
+        for (final GraphNode node : nodes) {
             if (marks.containsKey(node.index)) {
                 continue;
             }

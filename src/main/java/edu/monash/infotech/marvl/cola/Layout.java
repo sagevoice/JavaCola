@@ -1,473 +1,596 @@
 ﻿package edu.monash.infotech.marvl.cola;
 
-import edu.monash.infotech.marvl.cola.vpsc.IndexedVariable;
-import edu.monash.infotech.marvl.cola.vpsc.Projection;
+import edu.monash.infotech.marvl.cola.geom.*;
+import edu.monash.infotech.marvl.cola.powergraph.Groups;
+import edu.monash.infotech.marvl.cola.powergraph.LinkTypeAccessor;
+import edu.monash.infotech.marvl.cola.powergraph.PowerGraph;
+import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
+import edu.monash.infotech.marvl.cola.vpsc.*;
 
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
 
 /**
  * Main interface to cola layout.
- * @class Layout
+ *
  */
 public class Layout {
 
-    private int[]    _canvasSize           = {1, 1};
-    private double   _linkDistance         = 20;
-    private double   _defaultNodeSize      = 10;
+    private double[]       _canvasSize           = {1, 1};
+    private Object         _linkDistance         = new Double(20);
+    private double         _defaultNodeSize      = 10;
     private Consumer<Void> _linkLengthCalculator = null;
-    private boolean  _avoidOverlaps        = false;
-    private boolean  _handleDisconnected   = true;
+    private boolean        _avoidOverlaps        = false;
+    private boolean        _handleDisconnected   = true;
     private double _alpha;
-    private double _lastStress;
-    private boolean           _running        = false;
-    private Node[]            _nodes          = {};
-    private Group[]           _groups         = {};
-    private IndexedVariable[] _variables      = {};
-    private Group             _rootGroup      = null;
-    private Link[]            _links          = {};
-    private Constraint[]      _constraints    = {};
-    private double[][]        _distanceMatrix = null;
-    private Descent           _descent        = null;
-    private _directedLinkConstraints=null;
-    private double _threshold = 0.01;
-    private _visibilityGraph=null;
-    private double _groupCompactness = 1e-6;
+    private double                  _lastStress              = Double.NaN;
+    private boolean                 _running                 = false;
+    private List<GraphNode>         _nodes                   = new ArrayList<>();
+    private List<Group>             _groups                  = new ArrayList<>();
+    private Group                   _rootGroup               = null;
+    private List<Link>              _links                   = new ArrayList<>();
+    private List<Constraint>        _constraints             = new ArrayList<>();
+    private double[][]              _distanceMatrix          = null;
+    private Descent                 _descent                 = null;
+    private DirectedLinkConstraints _directedLinkConstraints = null;
+    private double                  _threshold               = 0.01;
+    private TangentVisibilityGraph  _visibilityGraph         = null;
+    private double                  _groupCompactness        = 1e-6;
+    private ToIntFunction           _linkType                = null;
 
     // sub-class and override this property to replace with a more sophisticated eventing mechanism
-    protected event = null;
+    protected Map<EventType, Consumer<Event>> event = null;
+
+    public Layout on(final String e, final Consumer<Event> listener) {
+        return on(EventType.valueOf(e), listener);
+    }
 
     // subscribe a listener to an event
     // sub-class and override this method to replace with a more sophisticated eventing mechanism
-    public on(e: EventType | string, listener: (event: Event) => void): Layout {
+    public Layout on(final EventType e, final Consumer<Event> listener) {
         // override me!
-        if (!this.event) this.event = {};
-        if (typeof e === 'string') {
-            this.event[EventType[e]] = listener;
-        } else {
-            this.event[e] = listener;
+        if (null == this.event) {
+            this.event = new EnumMap<>(EventType.class);
         }
+        this.event.put(e, listener);
         return this;
     }
 
     // a function that is notified of events like "tick"
     // sub-class and override this method to replace with a more sophisticated eventing mechanism
-    protected trigger(e: Event) {
-        if (this.event && typeof this.event[e.type] !== 'undefined') {
-            this.event[e.type](e);
+    protected void trigger(final Event e) {
+        if (null != this.event && this.event.containsKey(e.type)) {
+            this.event.get(e.type).accept(e);
         }
     }
 
     // a function that kicks off the iteration tick loop
     // it calls tick() repeatedly until tick returns true (is converged)
     // subclass and override it with something fancier (e.g. dispatch tick on a timer)
-    protected kick() {
-        while (!this.tick());
+    protected void kick() {
+        while (!this.tick()) { ; }
     }
 
-    /**
-     * iterate the layout.  Returns true when layout converged.
-     */
-    protected tick(): boolean {
+    /** iterate the layout.  Returns true when layout converged. */
+    protected boolean tick() {
         if (this._alpha < this._threshold) {
             this._running = false;
-            this.trigger({ type: EventType.end, alpha: this._alpha = 0, stress: this._lastStress });
+            this._alpha = 0;
+            this.trigger(new Event(EventType.end, this._alpha, this._lastStress));
             return true;
         }
-        const n = this._nodes.length,
-              m = this._links.length;
-        let o, i;
+        final int n = this._nodes.size(),
+                m = this._links.size();
+        GraphNode o;
+        int i;
 
         this._descent.locks.clear();
         for (i = 0; i < n; ++i) {
-            o = this._nodes[i];
-            if (o.fixed) {
-                if (typeof o.px === 'undefined' || typeof o.py === 'undefined') {
+            o = this._nodes.get(i);
+            if (0 < (o.fixed & 1)) {
+                if (Double.isNaN(o.px) || Double.isNaN(o.py)) {
                     o.px = o.x;
                     o.py = o.y;
                 }
-                var p = [o.px, o.py];
+                final double[] p = new double[] {o.px, o.py};
                 this._descent.locks.add(i, p);
             }
         }
 
-        let s1 = this._descent.rungeKutta();
+        final double s1 = this._descent.rungeKutta();
         //var s1 = descent.reduceStress();
-        if (s1 === 0) {
+        if (s1 == 0) {
             this._alpha = 0;
-        } else if (typeof this._lastStress !== 'undefined') {
+        } else if (!Double.isNaN(this._lastStress)) {
             this._alpha = s1; //Math.abs(Math.abs(this._lastStress / s1) - 1);
         }
         this._lastStress = s1;
 
-        const x = this._descent.x[0], y = this._descent.x[1];
+        final double[] x = this._descent.x[0], y = this._descent.x[1];
         for (i = 0; i < n; ++i) {
-            o = this._nodes[i];
+            o = this._nodes.get(i);
             o.x = x[i];
             o.y = y[i];
         }
 
-        this.trigger({ type: EventType.tick, alpha: this._alpha, stress: this._lastStress });
+        this.trigger(new Event(EventType.tick, this._alpha, this._lastStress));
         return false;
     }
 
     /**
-     * the list of nodes.
-     * If nodes has not been set, but links has, then we instantiate a nodes list here, of the correct size,
-     * before returning it.
+     * the list of nodes. If nodes has not been set, but links has, then we instantiate a nodes list here, of the correct size, before
+     * returning it.
+     *
      * @property nodes {Array}
      * @default empty list
      */
-    nodes(): Array<Node>
-    nodes(v: Array<Node>): Layout
-    nodes(v?: any): any {
-        if (!v) {
-            if (this._nodes.length === 0 && this._links.length > 0) {
-                // if we have links but no nodes, create the nodes array now with empty objects for the links to point at.
-                var n = 0;
-                this._links.forEach(function (l) {
-                    n = Math.max(n, l.source, l.target);
-                });
-                this._nodes = new Array(++n);
-                for (var i = 0; i < n; ++i) {
-                    this._nodes[i] = {};
-                }
+    public List<GraphNode> nodes() {
+        if (0 == this._nodes.size() && 0 < this._links.size()) {
+            // if we have links but no nodes, create the nodes array now with empty objects for the links to point at.
+            int n = 0;
+            for (final Link l : this._links) {
+                n = Math.max(n, l.source, l.target);
+            } ;
+            this._nodes = new ArrayList(++n);
+            for (int i = 0; i < n; ++i) {
+                this._nodes.set(i, new GraphNode());
             }
-            return this._nodes;
         }
+        return this._nodes;
+    }
+
+    public Layout nodes(final List<GraphNode> v) {
         this._nodes = v;
         return this;
     }
 
     /**
      * a list of hierarchical groups defined over nodes
+     *
      * @property groups {Array}
      * @default empty list
      */
-    groups(): Array<any>
-    groups(x: Array<any>): Layout
-    groups(x?: Array<any>): any {
-        if (!x) return this._groups;
+    public List<Group> groups() {
+        return this._groups;
+    }
+
+    public Layout groups(final List<Group> x) {
         this._groups = x;
-        this._rootGroup = {};
-        this._groups.forEach(g => {
-            if (typeof g.padding === "undefined")
+        this._rootGroup = new Group();
+        this._groups.forEach(g -> {
+            if (Double.isNaN(g.padding)) {
                 g.padding = 1;
-            if (typeof g.leaves !== "undefined")
-                g.leaves.forEach((v, i) => { (g.leaves[i] = this._nodes[v]).parent = g });
-            if (typeof g.groups !== "undefined")
-                g.groups.forEach((gi, i) => { (g.groups[i] = this._groups[gi]).parent = g });
+            }
+            if (null != g.leaves) {
+                //for (int i=0; i<g.leaves.size(); i++) {
+                //    final Leaf v = g.leaves.get(i);
+                //    this._nodes.
+                //}
+                g.leaves.forEach((v, i) -> { (g.leaves[i] = this._nodes.get(v)).parent = g; });
+            }
+            if (null != g.groups) {
+                g.groups.forEach((gi, i) -> { (g.groups[i] = this._groups.get(gi)).parent = g; });
+            }
         });
-        this._rootGroup.leaves = this._nodes.filter(v => typeof v.parent === 'undefined');
-        this._rootGroup.groups = this._groups.filter(g => typeof g.parent === 'undefined');
+        this._rootGroup.leaves = this._nodes.stream().filter(v -> null == v.parent).map((v) -> {return new Leaf(v.bounds, v.variable);})
+                                            .collect(Collectors.toList());
+        this._rootGroup.groups = this._groups.stream().filter(g -> null == g.parent).collect(Collectors.toList());
         return this;
     }
 
-    powerGraphGroups(f: Function): Layout {
-        var g = cola.powergraph.getGroups(this._nodes, this._links, this.linkAccessor, this._rootGroup);
+    public Layout powerGraphGroups(final Consumer<Groups> f) {
+        Groups g = (new PowerGraph()).getGroups(this._nodes, this._links, this.linkAccessor, this._rootGroup);
         this.groups(g.groups);
-        f(g);
+        f.accept(g);
         return this;
     }
 
     /**
      * if true, the layout will not permit overlaps of the node bounding boxes (defined by the width and height properties on nodes)
+     *
      * @property avoidOverlaps
      * @type bool
      * @default false
      */
-    avoidOverlaps(): boolean
-    avoidOverlaps(v: boolean): Layout
-    avoidOverlaps(v?: boolean): any {
-        if (!arguments.length) return this._avoidOverlaps;
+    public boolean avoidOverlaps() {
+        return this._avoidOverlaps;
+    }
+
+    public Layout avoidOverlaps(final boolean v) {
         this._avoidOverlaps = v;
         return this;
     }
 
     /**
-     * if true, the final step of the start method will be to nicely pack connected components of the graph.
-     * works best if start() is called with a reasonable number of iterations specified and
-     * each node has a bounding box (defined by the width and height properties on nodes).
+     * if true, the final step of the start method will be to nicely pack connected components of the graph. works best if start() is called
+     * with a reasonable number of iterations specified and each node has a bounding box (defined by the width and height properties on
+     * nodes).
+     *
      * @property handleDisconnected
      * @type bool
      * @default true
      */
-    handleDisconnected(): boolean
-    handleDisconnected(v: boolean): Layout
-    handleDisconnected(v?: boolean): any {
-        if (!arguments.length) return this._handleDisconnected;
+    public boolean handleDisconnected() {
+        return this._handleDisconnected;
+    }
+
+    public Layout handleDisconnected(final boolean v) {
         this._handleDisconnected = v;
         return this;
     }
 
     /**
-     * causes constraints to be generated such that directed graphs are laid out either from left-to-right or top-to-bottom.
-     * a separation constraint is generated in the selected axis for each edge that is not involved in a cycle (part of a strongly connected component)
-     * @param axis {string} 'x' for left-to-right, 'y' for top-to-bottom
-     * @param minSeparation {number|link=>number} either a number specifying a minimum spacing required across all links or a function to return the minimum spacing for each link
+     * causes constraints to be generated such that directed graphs are laid out either from left-to-right or top-to-bottom. a separation
+     * constraint is generated in the selected axis for each edge that is not involved in a cycle (part of a strongly connected component)
+     *
+     * @param axis          {string} 'x' for left-to-right, 'y' for top-to-bottom
+     * @param minSeparation {number|link=>number} either a number specifying a minimum spacing required across all links or a function to
+     *                      return the minimum spacing for each link
      */
-    flowLayout(axis: string, minSeparation: number|((t: any)=>number)): Layout {
-        if (!arguments.length) axis = 'y';
-        this._directedLinkConstraints = {
-            axis: axis,
-            getMinSeparation: typeof minSeparation === 'number' ? function () { return minSeparation } : minSeparation
-        };
+    public Layout flowLayout() {
+        return flowLayout("y", 0);
+    }
+
+    public Layout flowLayout(final String axis, final double minSeparation) {
+        this._directedLinkConstraints = new DirectedLinkConstraints(axis, (l) -> {return minSeparation;});
+        return this;
+    }
+
+    public Layout flowLayout(final String axis, ToDoubleFunction<Link> minSeparation) {
+        this._directedLinkConstraints = new DirectedLinkConstraints(axis, minSeparation);
         return this;
     }
 
     /**
      * links defined as source, target pairs over nodes
+     *
      * @property links {array}
      * @default empty list
      */
-    links(): Array<Link<Node|number>>
-    links(x: Array<Link<Node|number>>): Layout
-    links(x?: Array<Link<Node|number>>): any {
-        if (!arguments.length) return this._links;
+    public List<Link> links() {
+        return this._links;
+    }
+
+    public Layout links(final List<Link> x) {
         this._links = x;
         return this;
     }
 
     /**
      * list of constraints of various types
+     *
      * @property constraints
      * @type {array}
      * @default empty list
      */
-    constraints(): Array<any>
-    constraints(c: Array<any>): Layout
-    constraints(c?: Array<any>): any {
-        if (!arguments.length) return this._constraints;
+    public List<Constraint> constraints() {
+        return this._constraints;
+    }
+
+    public Layout constraints(final List<Constraint> c) {
         this._constraints = c;
         return this;
     }
 
     /**
-     * Matrix of ideal distances between all pairs of nodes.
-     * If unspecified, the ideal distances for pairs of nodes will be based on the shortest path distance between them.
+     * Matrix of ideal distances between all pairs of nodes. If unspecified, the ideal distances for pairs of nodes will be based on the
+     * shortest path distance between them.
+     *
      * @property distanceMatrix
      * @type {Array of Array of Number}
      * @default null
      */
-    distanceMatrix(): Array<Array<number>>
-    distanceMatrix(d: Array<Array<number>>): Layout
-    distanceMatrix(d?: any): any {
-        if (!arguments.length) return this._distanceMatrix;
+    public double[][] distanceMatrix() {
+        return this._distanceMatrix;
+    }
+
+    public Layout distanceMatrix(final double[][] d) {
         this._distanceMatrix = d;
         return this;
     }
 
     /**
-     * Size of the layout canvas dimensions [x,y]. Currently only used to determine the midpoint which is taken as the starting position
-     * for nodes with no preassigned x and y.
+     * Size of the layout canvas dimensions [x,y]. Currently only used to determine the midpoint which is taken as the starting position for
+     * nodes with no preassigned x and y.
+     *
      * @property size
      * @type {Array of Number}
      */
-    size(): Array<number>
-    size(x: Array<number>): Layout
-    size(x?: Array<number>): any {
-        if (!x) return this._canvasSize;
+    public double[] size() {
+        return this._canvasSize;
+    }
+
+    public Layout size(final double[] x) {
         this._canvasSize = x;
         return this;
     }
 
     /**
      * Default size (assume nodes are square so both width and height) to use in packing if node width/height are not specified.
+     *
      * @property defaultNodeSize
      * @type {Number}
      */
-    defaultNodeSize(): number
-    defaultNodeSize(x: number): Layout
-    defaultNodeSize(x?: any): any {
-        if (!x) return this._defaultNodeSize;
+    public double defaultNodeSize() {
+        return this._defaultNodeSize;
+    }
+
+    public Layout defaultNodeSize(final double x) {
         this._defaultNodeSize = x;
         return this;
     }
 
     /**
      * The strength of attraction between the group boundaries to each other.
+     *
      * @property defaultNodeSize
      * @type {Number}
      */
-    groupCompactness(): number
-    groupCompactness(x: number): Layout
-    groupCompactness(x?: any): any {
-        if (!x) return this._groupCompactness;
+    public double groupCompactness() {
+        return this._groupCompactness;
+    }
+
+    public Layout groupCompactness(final double x) {
         this._groupCompactness = x;
         return this;
     }
 
     /**
-     * links have an ideal distance, The automatic layout will compute layout that tries to keep links (AKA edges) as close as possible to this length.
+     * links have an ideal distance, The automatic layout will compute layout that tries to keep links (AKA edges) as close as possible to
+     * this length.
      */
-    linkDistance(): number
-    linkDistance(): (t: any) => number
-    linkDistance(x: number): Layout
-    linkDistance(x: (t: any) => number): Layout
-    linkDistance(x?: any): any {
-        if (!x) {
-            return this._linkDistance;
-        }
-        this._linkDistance = typeof x === "function" ? x : +x;
+    public Object linkDistance() {
+        return this._linkDistance;
+    }
+
+    public Layout linkDistance(final ToDoubleFunction<Link> x) {
+        this._linkDistance = x;
         this._linkLengthCalculator = null;
         return this;
     }
 
-    linkType(f: Function | number): Layout {
+    public Layout linkDistance(final Double x) {
+        this._linkDistance = x;
+        this._linkLengthCalculator = null;
+        return this;
+    }
+
+    public Layout linkType(final ToIntFunction<Link> f) {
         this._linkType = f;
         return this;
     }
 
-    convergenceThreshold(): number
-    convergenceThreshold(x: number): Layout
-    convergenceThreshold(x?: number): any {
-        if (!x) return this._threshold;
-        this._threshold = typeof x === "function" ? x : +x;
+    public double convergenceThreshold() {
+        return this._threshold;
+    }
+
+    public Layout convergenceThreshold(final double x) {
+        this._threshold = x;
         return this;
     }
 
-    alpha(): number
-    alpha(x: number): Layout
-    alpha(x?: number): any {
-        if (!arguments.length) return this._alpha;
-        else {
-            x = +x;
-            if (this._alpha) { // if we're already running
-                if (x > 0) this._alpha = x; // we might keep it hot
-                else this._alpha = 0; // or, next tick will dispatch "end"
-            } else if (x > 0) { // otherwise, fire it up!
-                if (!this._running) {
-                    this._running = true;
-                    this.trigger({ type: EventType.start, alpha: this._alpha = x});
-                    this.kick();
-                }
+    public double alpha() {
+        return this._alpha;
+    }
+
+    public Layout alpha(final double x) {
+        if (0 != this._alpha) { // if we're already running
+            if (0 < x) {
+                this._alpha = x; // we might keep it hot
+            } else {
+                this._alpha = 0; // or, next tick will dispatch "end"
             }
-            return this;
+        } else if (0 < x) { // otherwise, fire it up!
+            if (!this._running) {
+                this._running = true;
+                this._alpha = x;
+                this.trigger(new Event(EventType.start, this._alpha));
+                this.kick();
+            }
         }
+        return this;
     }
 
-    getLinkLength(link: any): number {
-        return typeof this._linkDistance === "function" ? +<number>((<any>this._linkDistance)(link)) : <number>this._linkDistance;
+    public double getLinkLength(final Link link) {
+        return this._linkDistance instanceof ToDoubleFunction ? (((ToDoubleFunction)this._linkDistance).applyAsDouble(link))
+                                                              : (Double)this._linkDistance;
     }
 
-    static setLinkLength(link: any, length: number) {
+    static void setLinkLength(final Link link, final double length) {
         link.length = length;
     }
 
-    getLinkType(link: any): number {
-        return typeof this._linkType === "function" ? this._linkType(link) : 0;
+    public int getLinkType(final Link link) {
+        return null != this._linkType ? this._linkType.applyAsInt(link) : 0;
     }
 
-    linkAccessor = {
-        getSourceIndex: Layout.getSourceIndex, getTargetIndex: Layout.getTargetIndex, setLength: Layout.setLinkLength,
-        getType: (l) => typeof this._linkType === "function" ? this._linkType(l) : 0
-    };
+    private class LinkAccessor implements LinkLengthAccessor<Link>, LinkTypeAccessor<Link>, LinkSepAccessor<Link> {
+
+        private Layout layout;
+
+        protected LinkAccessor(final Layout layout) {
+            this.layout = layout;
+        }
+
+        @Override
+        public int getSourceIndex(Link l) {
+            return Layout.getSourceIndex(l);
+        }
+
+        @Override
+        public int getTargetIndex(Link l) {
+            return Layout.getTargetIndex(l);
+        }
+
+        @Override
+        public void setLength(Link l, double value) {
+            Layout.setLinkLength(l, value);
+        }
+
+        @Override
+        public int getType(Link l) {
+            return layout.getLinkType(l);
+        }
+
+        @Override
+        public double getMinSeparation(Link l) {
+            return layout._directedLinkConstraints.getMinSeparation.applyAsDouble(l);
+        }
+    }
+
+
+    private LinkAccessor linkAccessor = new LinkAccessor(this);
 
     /**
-     * compute an ideal length for each link based on the graph structure around that link.
-     * you can use this (for example) to create extra space around hub-nodes in dense graphs.
-     * In particular this calculation is based on the "symmetric difference" in the neighbour sets of the source and target:
-     * i.e. if neighbours of source is a and neighbours of target are b then calculation is: sqrt(|a union b| - |a intersection b|)
-     * Actual computation based on inspection of link structure occurs in start(), so links themselves
-     * don't have to have been assigned before invoking this function.
+     * compute an ideal length for each link based on the graph structure around that link. you can use this (for example) to create extra
+     * space around hub-nodes in dense graphs. In particular this calculation is based on the "symmetric difference" in the neighbour sets
+     * of the source and target: i.e. if neighbours of source is a and neighbours of target are b then calculation is: sqrt(|a union b| - |a
+     * intersection b|) Actual computation based on inspection of link structure occurs in start(), so links themselves don't have to have
+     * been assigned before invoking this function.
+     *
      * @param {number} [idealLength] the base length for an edge when its source and start have no other common neighbours (e.g. 40)
      * @param {number} [w] a multiplier for the effect of the length adjustment (e.g. 0.7)
      */
-    symmetricDiffLinkLengths(idealLength: number, w: number = 1): Layout {
+    public Layout symmetricDiffLinkLengths(final double idealLength) {
+        return symmetricDiffLinkLengths(idealLength, 1);
+    }
+
+    public Layout symmetricDiffLinkLengths(final double idealLength, final double w) {
         this.linkDistance(l -> idealLength * l.length);
-        this._linkLengthCalculator = () -> cola.symmetricDiffLinkLengths(this._links, this.linkAccessor, w);
+        this._linkLengthCalculator = (a) -> LinkLengths.symmetricDiffLinkLengths(this._links, this.linkAccessor, w);
         return this;
     }
 
     /**
-     * compute an ideal length for each link based on the graph structure around that link.
-     * you can use this (for example) to create extra space around hub-nodes in dense graphs.
-     * In particular this calculation is based on the "symmetric difference" in the neighbour sets of the source and target:
-     * i.e. if neighbours of source is a and neighbours of target are b then calculation is: |a intersection b|/|a union b|
-     * Actual computation based on inspection of link structure occurs in start(), so links themselves
-     * don't have to have been assigned before invoking this function.
+     * compute an ideal length for each link based on the graph structure around that link. you can use this (for example) to create extra
+     * space around hub-nodes in dense graphs. In particular this calculation is based on the "symmetric difference" in the neighbour sets
+     * of the source and target: i.e. if neighbours of source is a and neighbours of target are b then calculation is: |a intersection b|/|a
+     * union b| Actual computation based on inspection of link structure occurs in start(), so links themselves don't have to have been
+     * assigned before invoking this function.
+     *
      * @param {number} [idealLength] the base length for an edge when its source and start have no other common neighbours (e.g. 40)
      * @param {number} [w] a multiplier for the effect of the length adjustment (e.g. 0.7)
      */
-    jaccardLinkLengths(idealLength: number, w: number = 1): Layout {
+    public Layout jaccardLinkLengths(final double idealLength) {
+        return jaccardLinkLengths(idealLength, 1);
+    }
+
+    public Layout jaccardLinkLengths(final double idealLength, final double w) {
         this.linkDistance(l -> idealLength * l.length);
-        this._linkLengthCalculator = () -> cola.jaccardLinkLengths(this._links, this.linkAccessor, w);
+        this._linkLengthCalculator = (a) -> LinkLengths.jaccardLinkLengths(this._links, this.linkAccessor, w);
         return this;
+    }
+
+    public Layout start() {
+        return start(0);
+    }
+
+    public Layout start(final int initialUnconstrainedIterations) {
+        return start(initialUnconstrainedIterations, 0);
+    }
+
+    public Layout start(final int initialUnconstrainedIterations, final int initialUserConstraintIterations) {
+        return start(initialUnconstrainedIterations, initialUserConstraintIterations, 0);
+    }
+
+    public Layout start(final int initialUnconstrainedIterations, final int initialUserConstraintIterations,
+                        final int initialAllConstraintsIterations)
+    {
+        return start(initialUnconstrainedIterations, initialUserConstraintIterations, initialAllConstraintsIterations, 0);
+    }
+
+    public Layout start(final int initialUnconstrainedIterations, final int initialUserConstraintIterations,
+                        final int initialAllConstraintsIterations, final int gridSnapIterations)
+    {
+        return start(initialUnconstrainedIterations, initialUserConstraintIterations, initialAllConstraintsIterations, gridSnapIterations,
+                     true);
     }
 
     /**
      * start the layout process
+     *
+     * @param {number}    [initialUnconstrainedIterations=0] unconstrained initial layout iterations
+     * @param {number}    [initialUserConstraintIterations=0] initial layout iterations with user-specified constraints
+     * @param {number}    [initialAllConstraintsIterations=0] initial layout iterations with all constraints including non-overlap
+     * @param {number}    [gridSnapIterations=0] iterations of "grid snap", which pulls nodes towards grid cell centers - grid of size
+     *                    node[0].width - only really makes sense if all nodes have the same width and height
+     * @param keepRunning keep iterating asynchronously via the tick method
      * @method start
-     * @param {number} [initialUnconstrainedIterations=0] unconstrained initial layout iterations
-     * @param {number} [initialUserConstraintIterations=0] initial layout iterations with user-specified constraints
-     * @param {number} [initialAllConstraintsIterations=0] initial layout iterations with all constraints including non-overlap
-     * @param {number} [gridSnapIterations=0] iterations of "grid snap", which pulls nodes towards grid cell centers - grid of size node[0].width - only really makes sense if all nodes have the same width and height
-     * @param [keepRunning=true] keep iterating asynchronously via the tick method
      */
-    start(
-        initialUnconstrainedIterations: number = 0,
-        initialUserConstraintIterations: number = 0,
-        initialAllConstraintsIterations: number = 0,
-        gridSnapIterations: number = 0,
-        keepRunning = true
-    ): Layout {
-        var i: number,
-            j: number,
-            n = (<Array<any>>this.nodes()).length,
-            N = n + 2 * this._groups.length,
-            m = this._links.length,
-            w = this._canvasSize[0],
-            h = this._canvasSize[1];
+    public Layout start(final int initialUnconstrainedIterations, final int initialUserConstraintIterations,
+                        final int initialAllConstraintsIterations, final int gridSnapIterations, final boolean keepRunning)
+    {
+        final int n = this.nodes().size(),
+                N = n + 2 * this._groups.size(),
+                m = this._links.size();
+        final double w = this._canvasSize[0],
+                h = this._canvasSize[1];
 
-        if (this._linkLengthCalculator) this._linkLengthCalculator();
+        if (null != this._linkLengthCalculator) {
+            this._linkLengthCalculator.accept(null);
+        }
 
-        var x = new Array(N), y = new Array(N);
-        this._variables = new Array(N);
+        double[] x = new double[N], y = new double[N];
 
-        var makeVariable = (i, w) => this._variables[i] = new vpsc.IndexedVariable(i, w);
+        final double[][] G;
 
-        var G = null;
+        final boolean ao = this._avoidOverlaps;
 
-        var ao = this._avoidOverlaps;
-
-        this._nodes.forEach((v, i) => {
+        for (int i = 0; i < _nodes.size(); i++) {
+            final GraphNode v = _nodes.get(i);
             v.index = i;
-            if (typeof v.x === 'undefined') {
-                v.x = w / 2, v.y = h / 2;
+            if (Double.isNaN(v.x)) {
+                v.x = w / 2;
+                v.y = h / 2;
             }
-            x[i] = v.x, y[i] = v.y;
-        });
+            x[i] = v.x;
+            y[i] = v.y;
+        }
+
         //should we do this to clearly label groups?
         //this._groups.forEach((g, i) => g.groupIndex = i);
 
-        var distances;
-        if (this._distanceMatrix) {
+        double[][] distances;
+        if (null != this._distanceMatrix) {
             // use the user specified distanceMatrix
             distances = this._distanceMatrix;
+            G = null;
         } else {
             // construct an n X n distance matrix based on shortest paths through graph (with respect to edge.length).
-            distances = (new cola.shortestpaths.Calculator(N, this._links, Layout.getSourceIndex, Layout.getTargetIndex, l=> this.getLinkLength(l))).DistanceMatrix();
+            distances = (new Calculator<>(N, this._links, (l) -> Layout.getSourceIndex(l), (l) -> Layout.getTargetIndex(l),
+                                          l -> this.getLinkLength(l))).DistanceMatrix();
 
             // G is a square matrix with G[i][j] = 1 iff there exists an edge between node i and node j
             // otherwise 2. (
-            G = cola.Descent.createSquareMatrix(N,() => 2);
-            this._links.forEach(e => {
-                var u = Layout.getSourceIndex(e), v = Layout.getTargetIndex(e);
-                G[u][v] = G[v][u] = 1;
+            G = Descent.createSquareMatrix(N, (a, b) -> 2);
+            this._links.forEach(e -> {
+                final int u = Layout.getSourceIndex(e), v = Layout.getTargetIndex(e);
+                G[u][v] = 1;
+                G[v][u] = 1;
             });
         }
 
-        var D = cola.Descent.createSquareMatrix(N, function (i, j) {
+        double[][] D = Descent.createSquareMatrix(N, (i, j) -> {
             return distances[i][j];
         });
 
-        if (this._rootGroup && typeof this._rootGroup.groups !== 'undefined') {
-            var i = n;
-            var addAttraction = (i, j, strength, idealDistance) => {
+        if (null != this._rootGroup && null != this._rootGroup.groups) {
+            final double strength = this._groupCompactness;
+            final double idealDistance = 0.1;
+            final BiConsumer<Integer, Integer> addAttraction = (i, j) -> {
                 G[i][j] = G[j][i] = strength;
                 D[i][j] = D[j][i] = idealDistance;
             };
-            this._groups.forEach(g => {
-                addAttraction(i, i + 1, this._groupCompactness, 0.1);
+            int i = n;
+            for (final Group g : this._groups) {
+                addAttraction.accept(i, i + 1);
 
                 // todo: add terms here attracting children of the group to the group dummy nodes
                 //if (typeof g.leaves !== 'undefined')
@@ -484,29 +607,34 @@ public class Layout {
                 //        addAttraction(gid + 1, i + 1, 0.1, 0.1);
                 //    });
 
-                x[i] = 0, y[i++] = 0;
-                x[i] = 0, y[i++] = 0;
-            });
-        } else this._rootGroup = { leaves: this._nodes, groups: [] };
+                x[i] = 0;
+                y[i++] = 0;
+                x[i] = 0;
+                y[i++] = 0;
+            }
+        } else {
+            this._rootGroup = new Group(_nodes.stream().map(v -> new Leaf(v.bounds, v.variable)).collect(Collectors.toList()),
+                                        new ArrayList<>());
+        }
 
-        var curConstraints = this._constraints || [];
-        if (this._directedLinkConstraints) {
-            (<any>this.linkAccessor).getMinSeparation = this._directedLinkConstraints.getMinSeparation;
-            curConstraints = curConstraints.concat(cola.generateDirectedEdgeConstraints(n, this._links, this._directedLinkConstraints.axis, <any>(this.linkAccessor)));
+        final List<Constraint> curConstraints = null != this._constraints ? this._constraints : new ArrayList<>();
+        if (null != this._directedLinkConstraints) {
+            curConstraints.addAll(LinkLengths.generateDirectedEdgeConstraints(n, this._links, this._directedLinkConstraints.axis,
+                                                                              this.linkAccessor));
 
             // todo: add containment constraints between group dummy nodes and their children
         }
 
         this.avoidOverlaps(false);
-        this._descent = new cola.Descent([x, y], D);
+        this._descent = new Descent(new double[][] {x, y}, D);
 
         this._descent.locks.clear();
-        for (var i = 0; i < n; ++i) {
-            var o = this._nodes[i];
-            if (o.fixed) {
+        for (int i = 0; i < n; ++i) {
+            final GraphNode o = this._nodes.get(i);
+            if (0 < (o.fixed & 1)) {
                 o.px = o.x;
                 o.py = o.y;
-                var p = [o.x, o.y];
+                double[] p = new double[] {o.x, o.y};
                 this._descent.locks.add(i, p);
             }
         }
@@ -516,103 +644,120 @@ public class Layout {
         this._descent.run(initialUnconstrainedIterations);
 
         // apply initialIterations with user constraints but no nonoverlap constraints
-        if (curConstraints.length > 0) this._descent.project = new Projection(this._nodes, this._groups, this._rootGroup, curConstraints).projectFunctions();
+        if (curConstraints.size() > 0) {
+            this._descent.project = new Projection(this._nodes, this._groups, this._rootGroup, curConstraints).projectFunctions();
+        }
         this._descent.run(initialUserConstraintIterations);
 
         // subsequent iterations will apply all constraints
         this.avoidOverlaps(ao);
         if (ao) {
-            this._nodes.forEach(function (v, i) { v.x = x[i], v.y = y[i]; });
+            this._nodes.forEach((v, i) -> { v.x = x[i]; v.y = y[i]; });
             this._descent.project = new Projection(this._nodes, this._groups, this._rootGroup, curConstraints, true).projectFunctions();
-            this._nodes.forEach(function (v, i) { x[i] = v.x, y[i] = v.y; });
+            this._nodes.forEach((v, i) -> { x[i] = v.x; y[i] = v.y; });
         }
 
         // allow not immediately connected nodes to relax apart (p-stress)
         this._descent.G = G;
         this._descent.run(initialAllConstraintsIterations);
 
-        if (gridSnapIterations) {
+        if (0 < gridSnapIterations) {
             this._descent.snapStrength = 1000;
-            this._descent.snapGridSize = this._nodes[0].width;
+            this._descent.snapGridSize = this._nodes.get(0).width;
             this._descent.numGridSnapNodes = n;
             this._descent.scaleSnapByMaxH = n != N; // if we have groups then need to scale hessian so grid forces still apply
-            var G0 = cola.Descent.createSquareMatrix(N,(i, j) => {
-                if (i >= n || j >= n) return G[i][j];
-                return 0
+            double[][] G0 = Descent.createSquareMatrix(N, (i, j) -> {
+                if (i >= n || j >= n) {
+                    return G[i][j];
+                }
+                return 0;
             });
             this._descent.G = G0;
             this._descent.run(gridSnapIterations);
         }
 
-        this._links.forEach(l => {
-            if (typeof l.source == "number") l.source = this._nodes[l.source];
-            if (typeof l.target == "number") l.target = this._nodes[l.target];
+        this._links.forEach(l -> {
+            if (l.source instanceof Number) {
+                l.source = this._nodes.get(l.source);
+            }
+            if (l.target instanceof Number) {
+                l.target = this._nodes.get(l.target);
+            }
         });
-        this._nodes.forEach(function (v, i) {
-            v.x = x[i], v.y = y[i];
-        });
+        for (int i = 0; i < _nodes.size(); i++) {
+            final GraphNode v = _nodes.get(i);
+            v.x = x[i];
+            v.y = y[i];
+        }
 
         // recalculate nodes position for disconnected graphs
-        if (!this._distanceMatrix && this._handleDisconnected) {
-            var graphs = cola.separateGraphs(this._nodes, this._links);
-            cola.applyPacking(graphs, w, h, this._defaultNodeSize);
+        if (null == this._distanceMatrix && this._handleDisconnected) {
+            final HandleDisconnected handleDisconnected = new HandleDisconnected();
+            List<Graph> graphs = handleDisconnected.separateGraphs(this._nodes, this._links);
+            handleDisconnected.applyPacking(graphs, w, h, this._defaultNodeSize);
 
-            this._nodes.forEach((v, i) => {
-                this._descent.x[0][i] = v.x, this._descent.x[1][i] = v.y;
-            });
+            for (int i = 0; i < _nodes.size(); i++) {
+                final GraphNode v = _nodes.get(i);
+                this._descent.x[0][i] = v.x;
+                this._descent.x[1][i] = v.y;
+            }
         }
         return keepRunning ? this.resume() : this;
     }
 
-    resume(): Layout {
+    public Layout resume() {
         return this.alpha(0.1);
     }
 
-    stop(): Layout {
+    public Layout stop() {
         return this.alpha(0);
+    }
+
+    public void prepareEdgeRouting() {
+        prepareEdgeRouting(0);
     }
 
     /// find a visibility graph over the set of nodes.  assumes all nodes have a
     /// bounds property (a rectangle) and that no pair of bounds overlaps.
-    prepareEdgeRouting(nodeMargin: number = 0) {
-        this._visibilityGraph = new cola.geom.TangentVisibilityGraph(
-            this._nodes.map(function (v) {
-                return v.bounds.inflate(-nodeMargin).vertices();
-            }));
+    public void prepareEdgeRouting(final double nodeMargin) {
+        this._visibilityGraph = new TangentVisibilityGraph(
+                this._nodes.stream().map((v) -> {
+                    return v.bounds.inflate(-nodeMargin).vertices();
+                }));
     }
 
     /// find a route avoiding node bounds for the given edge.
     /// assumes the visibility graph has been created (by prepareEdgeRouting method)
     /// and also assumes that nodes have an index property giving their position in the
     /// node array.  This index property is created by the start() method.
-    routeEdge(edge, draw) {
-        var lineData = [];
+    public List<Point> routeEdge(final Link edge, Consumer<TangentVisibilityGraph> draw) {
+        List<Point> lineData = new ArrayList<>();
         //if (d.source.id === 10 && d.target.id === 11) {
         //    debugger;
         //}
-        var vg2 = new cola.geom.TangentVisibilityGraph(this._visibilityGraph.P, { V: this._visibilityGraph.V, E: this._visibilityGraph.E }),
-            port1 = <geom.TVGPoint>{ x: edge.source.x, y: edge.source.y },
-            port2 = <geom.TVGPoint>{ x: edge.target.x, y: edge.target.y },
-            start = vg2.addPoint(port1, edge.source.index),
-            end = vg2.addPoint(port2, edge.target.index);
+        final TangentVisibilityGraph vg2 = new TangentVisibilityGraph(this._visibilityGraph.P, new VisibilityGraph(this._visibilityGraph.V,
+                                                                                                                   this._visibilityGraph.E));
+        final TVGPoint port1 = new TVGPoint(edge.source.x, edge.source.y);
+        final TVGPoint port2 = new TVGPoint(edge.target.x, edge.target.y);
+        final VisibilityVertex start = vg2.addPoint(port1, edge.source.index);
+        final VisibilityVertex end = vg2.addPoint(port2, edge.target.index);
         vg2.addEdgeIfVisible(port1, port2, edge.source.index, edge.target.index);
-        if (typeof draw !== 'undefined') {
-            draw(vg2);
+        if (null != draw) {
+            draw.accept(vg2);
         }
-        var sourceInd = e => e.source.index, targetInd = e => e.target.index, length = e => e.length(),
-            spCalc = new cola.shortestpaths.Calculator(vg2.V.length, vg2.E, sourceInd, targetInd, length),
-            shortestPath = spCalc.PathFromNodeToNode(start.id, end.id);
-        if (shortestPath.length === 1 || shortestPath.length === vg2.V.length) {
-            cola.vpsc.makeEdgeBetween(edge, edge.source.innerBounds, edge.target.innerBounds, 5);
-            lineData = [{ x: edge.sourceIntersection.x, y: edge.sourceIntersection.y }, { x: edge.arrowStart.x, y: edge.arrowStart.y }];
+        final Calculator<VisibilityEdge> spCalc = new Calculator<>(vg2.V.size(), vg2.E, e -> e.source.index, e -> e.target.index, e -> e.length());
+        final double[] shortestPath = spCalc.PathFromNodeToNode(start.id, end.id);
+        if (1 == shortestPath.length || shortestPath.length == vg2.V.size()) {
+            VPSC.makeEdgeBetween(edge, edge.source.innerBounds, edge.target.innerBounds, 5);
+            lineData.add(new Point(edge.sourceIntersection.x, edge.sourceIntersection.y));
+            lineData.add(new Point(edge.arrowStart.x, edge.arrowStart.y));
         } else {
-            var n = shortestPath.length - 2,
-                p = vg2.V[shortestPath[n]].p,
-                q = vg2.V[shortestPath[0]].p,
-                lineData = [edge.source.innerBounds.rayIntersection(p.x, p.y)];
-            for (var i = n; i >= 0; --i)
-                lineData.push(vg2.V[shortestPath[i]].p);
-            lineData.push(cola.vpsc.makeEdgeTo(q, edge.target.innerBounds, 5));
+            int n = shortestPath.length - 2;
+            final TVGPoint p = vg2.V.get(shortestPath[n]).p;
+            final TVGPoint q = vg2.V.get(shortestPath[0]).p;
+            lineData.add(edge.source.innerBounds.rayIntersection(p.x, p.y));
+            for (int i = n; i >= 0; --i) { lineData.add(vg2.V.get(shortestPath[i]).p); }
+            lineData.add(VPSC.makeEdgeTo(q, edge.target.innerBounds, 5));
         }
         //lineData.forEach((v, i) => {
         //    if (i > 0) {
@@ -630,16 +775,17 @@ public class Layout {
     }
 
     //The link source and target may be just a node index, or they may be references to nodes themselves.
-    static getSourceIndex(e) {
-        return typeof e.source === 'number' ? e.source : e.source.index;
+    static int getSourceIndex(final Link e) {
+        return e.source instanceof Number ? (Integer)e.source : ((GraphNode)e.source).index;
     }
 
     //The link source and target may be just a node index, or they may be references to nodes themselves.
-    static getTargetIndex(e) {
-        return typeof e.target === 'number' ? e.target : e.target.index;
+    static int getTargetIndex(final Link e) {
+        return e.target instanceof Number ? (Integer)e.target : ((GraphNode)e.target).index;
     }
+
     // Get a string ID for a given link.
-    static linkId(e) {
+    static String linkId(final Link e) {
         return Layout.getSourceIndex(e) + "-" + Layout.getTargetIndex(e);
     }
 
@@ -649,22 +795,22 @@ public class Layout {
     // Bit 3 stores the hover state, from mouseover to mouseout.
     // Dragend is a special case: it also clears the hover state.
 
-    static dragStart(d) {
+    static void dragStart(final GraphNode d) {
         d.fixed |= 2; // set bit 2
-        d.px = d.x, d.py = d.y; // set velocity to zero
+        d.px = d.x; d.py = d.y; // set velocity to zero
     }
 
-    static dragEnd(d) {
+    static void dragEnd(final GraphNode d) {
         d.fixed &= ~6; // unset bits 2 and 3
         //d.fixed = 0;
     }
 
-    static mouseOver(d) {
+    static void mouseOver(final GraphNode d) {
         d.fixed |= 4; // set bit 3
-        d.px = d.x, d.py = d.y; // set velocity to zero
+        d.px = d.x; d.py = d.y; // set velocity to zero
     }
 
-    static mouseOut(d) {
+    static void mouseOut(final GraphNode d) {
         d.fixed &= ~4; // unset bit 3
     }
 }

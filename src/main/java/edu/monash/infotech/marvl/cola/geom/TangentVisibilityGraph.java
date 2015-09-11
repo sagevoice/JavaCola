@@ -1,12 +1,11 @@
 package edu.monash.infotech.marvl.cola.geom;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class TangentVisibilityGraph extends VisibilityGraph {
     public TVGPoint[][] P;
 
-    TangentVisibilityGraph(final TVGPoint[][] P) {
+    public TangentVisibilityGraph(final TVGPoint[][] P) {
         super();
         this.P = P.clone();
         final int n = P.length;
@@ -34,7 +33,7 @@ public class TangentVisibilityGraph extends VisibilityGraph {
         }
     }
 
-    TangentVisibilityGraph(final TVGPoint[][] P, final VisibilityGraph g0) {
+    public TangentVisibilityGraph(final TVGPoint[][] P, final VisibilityGraph g0) {
         super(new ArrayList<>(g0.V), new ArrayList<>(g0.E));
         this.P = P;
     }
