@@ -2,17 +2,17 @@ package edu.monash.infotech.marvl.cola.vpsc;
 
 import edu.monash.infotech.marvl.cola.TriConsumer;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class Variable {
 
-    public double                offset = 0;
-    public Block                 block;
-    public ArrayList<Constraint> cIn;
-    public ArrayList<Constraint> cOut;
-    public double                desiredPosition;
-    public double                weight;
-    public double                scale;
+    public double offset = 0;
+    public Block            block;
+    public List<Constraint> cIn;
+    public List<Constraint> cOut;
+    public double           desiredPosition;
+    public double           weight;
+    public double           scale;
 
     public Variable(final double desiredPosition) {
         this(desiredPosition, 1.0);
@@ -38,7 +38,15 @@ public class Variable {
 
     // visit neighbours by active constraints within the same block
     public void visitNeighbours(final Variable prev, final TriConsumer<Constraint, Variable, ValueHolder> f, final ValueHolder value) {
-        this.cOut.forEach(c -> {if (c.active && prev != c.right) { f.accept(c, c.right, value); }});
-        this.cIn.forEach(c -> {if (c.active && prev != c.left) { f.accept(c, c.left, value); }});
+        this.cOut.forEach(c -> {
+            if (c.active && prev != c.right) {
+                f.accept(c, c.right, value);
+            }
+        });
+        this.cIn.forEach(c -> {
+            if (c.active && prev != c.left) {
+                f.accept(c, c.left, value);
+            }
+        });
     }
 }

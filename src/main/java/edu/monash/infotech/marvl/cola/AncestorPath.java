@@ -2,11 +2,11 @@ package edu.monash.infotech.marvl.cola;
 
 import lombok.AllArgsConstructor;
 
-import java.util.ArrayList;
+import java.util.List;
 
 @AllArgsConstructor
 public class AncestorPath {
 
-    public NodeWrapper            commonAncestor;
-    public ArrayList<NodeWrapper> lineages;
+    public NodeWrapper       commonAncestor;
+    public List<NodeWrapper> lineages;
 }

@@ -1,12 +1,14 @@
 package edu.monash.infotech.marvl.cola;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 // from: https://gist.github.com/nervoussystem
 public class PairingHeap<T> {
-    private ArrayList<PairingHeap<T>> subheaps;
-    public T elem;
+
+    private List<PairingHeap<T>> subheaps;
+    public  T                    elem;
 
     PairingHeap(final T elem) {
         this.elem = elem;

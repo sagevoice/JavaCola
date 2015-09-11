@@ -2,11 +2,11 @@ package edu.monash.infotech.marvl.cola;
 
 import lombok.AllArgsConstructor;
 
-import java.util.ArrayList;
+import java.util.List;
 
 @AllArgsConstructor
 class SegmentSet {
 
-    public double             pos;
-    public ArrayList<Segment> segments;
+    public double        pos;
+    public List<Segment> segments;
 }

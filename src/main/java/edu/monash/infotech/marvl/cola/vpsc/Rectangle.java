@@ -5,6 +5,7 @@ import edu.monash.infotech.marvl.cola.geom.Point;
 import lombok.AllArgsConstructor;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @AllArgsConstructor
 public class Rectangle {
@@ -81,12 +82,12 @@ public class Rectangle {
      * @param y2 number second y coord of line
      * @return any intersection points found
      */
-    public ArrayList<Point> lineIntersections(final double x1, final double y1, final double x2, final double y2) {
+    public List<Point> lineIntersections(final double x1, final double y1, final double x2, final double y2) {
         final double[][] sides = {{this.x, this.y, this.X, this.y},
                             {this.X, this.y, this.X, this.Y},
                             {this.X, this.Y, this.x, this.Y},
                             {this.x, this.Y, this.x, this.y}};
-        final ArrayList<Point> intersections = new ArrayList<>();
+        final List<Point> intersections = new ArrayList<>();
         for (int i = 0; 4 > i; ++i) {
             final Point r = Rectangle.lineIntersection(x1, y1, x2, y2, sides[i][0], sides[i][1], sides[i][2], sides[i][3]);
             if (null != r) {
@@ -107,7 +108,7 @@ public class Rectangle {
      * @method lineIntersection
      */
     public Point rayIntersection(final double x2, final double y2) {
-        final ArrayList<Point> ints = this.lineIntersections(this.cx(), this.cy(), x2, y2);
+        final List<Point> ints = this.lineIntersections(this.cx(), this.cy(), x2, y2);
         return 0 < ints.size() ? ints.get(0) : null;
     }
 

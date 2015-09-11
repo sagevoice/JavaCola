@@ -4,6 +4,7 @@ import edu.monash.infotech.marvl.cola.geom.Point;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -153,18 +154,18 @@ public class VPSC {
 
     public static yRect yRect = new yRect();
 
-    public static ArrayList<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep) {
+    public static List<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep) {
         return generateGroupConstraints(root, f, minSep, false);
 
     }
 
-    public static ArrayList<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep,
+    public static List<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep,
                                                                  final boolean isContained)
     {
         final double padding = root.padding;
         final int gn = (null != root.groups) ? root.groups.size() : 0;
         final int ln = (null != root.leaves) ? root.leaves.size() : 0;
-        final ArrayList<Constraint> childConstraints = new ArrayList<>();
+        final List<Constraint> childConstraints = new ArrayList<>();
         for (int j = 0; j < gn; j++) {
             final Group g = root.groups.get(j);
             childConstraints.addAll(generateGroupConstraints(g, f, minSep, true));
@@ -198,7 +199,7 @@ public class VPSC {
             rs[i] = f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b));
             vs[i++] = g.minVar;
         }
-        final ArrayList<Constraint> cs = generateConstraints(rs, vs, f, minSep);
+        final List<Constraint> cs = generateConstraints(rs, vs, f, minSep);
         if (0 < gn) {
             Arrays.stream(vs).forEach(v -> {
                 v.cOut = new ArrayList<>();
@@ -223,7 +224,7 @@ public class VPSC {
         return childConstraints;
     }
 
-    public static ArrayList<Constraint> generateConstraints(final Rectangle[] rs, final Variable[] vars, final RectAccessors rect,
+    public static List<Constraint> generateConstraints(final Rectangle[] rs, final Variable[] vars, final RectAccessors rect,
                                                             final double minSep)
     {
         int i;
@@ -238,7 +239,7 @@ public class VPSC {
         }
         events = Arrays.stream(events).sorted((a, b) -> compareEvents(a, b)).collect(Collectors.toList())
                        .toArray(new Event[N]);
-        final ArrayList<Constraint> cs = new ArrayList<>();
+        final List<Constraint> cs = new ArrayList<>();
         final RBTree<Node> scanline = makeRBTree();
         for (i = 0; i < N; ++i) {
             final Event e = events[i];
@@ -319,25 +320,25 @@ public class VPSC {
 
     }
 
-    public static ArrayList<Constraint> generateXConstraints(final Rectangle[] rs, final Variable[] vars) {
+    public static List<Constraint> generateXConstraints(final Rectangle[] rs, final Variable[] vars) {
         return generateConstraints(rs, vars, xRect, 1e-6);
     }
 
-    public static ArrayList<Constraint> generateYConstraints(final Rectangle[] rs, final Variable[] vars) {
+    public static List<Constraint> generateYConstraints(final Rectangle[] rs, final Variable[] vars) {
         return generateConstraints(rs, vars, yRect, 1e-6);
     }
 
-    public static ArrayList<Constraint> generateXGroupConstraints(final Group root) {
+    public static List<Constraint> generateXGroupConstraints(final Group root) {
         return generateGroupConstraints(root, xRect, 1e-6);
     }
 
-    public static ArrayList<Constraint> generateYGroupConstraints(final Group root) {
+    public static List<Constraint> generateYGroupConstraints(final Group root) {
         return generateGroupConstraints(root, yRect, 1e-6);
     }
 
     public static void removeOverlaps(final Rectangle[] rs) {
         Variable[] vs = Arrays.stream(rs).map(r -> new Variable(r.cx())).collect(Collectors.toList()).toArray(new Variable[rs.length]);
-        ArrayList<Constraint> cs = VPSC.generateXConstraints(rs, vs);
+        List<Constraint> cs = VPSC.generateXConstraints(rs, vs);
         Solver solver = new Solver(vs, cs.toArray(new Constraint[cs.size()]));
         solver.solve();
         for (int i = 0; i < vs.length; i++) {

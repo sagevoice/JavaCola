@@ -1,6 +1,7 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
 import java.util.ArrayList;
+import java.util.List;
 
 //Based on js_es:
 //
@@ -27,9 +28,9 @@ import java.util.ArrayList;
 //THE SOFTWARE.
 public class Iterator<T> {
 
-    public TreeBase<T>          _tree;
-    public ArrayList<RBNode<T>> _ancestors;
-    public RBNode<T>            _cursor;
+    public TreeBase<T>     _tree;
+    public List<RBNode<T>> _ancestors;
+    public RBNode<T>       _cursor;
 
     public Iterator(final TreeBase<T> tree) {
         this._tree = tree;

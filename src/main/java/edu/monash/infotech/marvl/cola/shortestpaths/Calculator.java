@@ -5,6 +5,7 @@ import edu.monash.infotech.marvl.cola.TriFunction;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
@@ -79,10 +80,9 @@ public class Calculator<T> {
     // find shortest path from start to end, with the opportunity at
     // each edge traversal to compute a custom cost based on the
     // previous edge.  For example, to penalise bends.
-    public ArrayList<Integer> PathFromNodeToNodeWithPrevCost(
-            int start,
-            int end,
-            TriFunction<Integer, Integer, Integer, Double> prevCost)
+    public List<Integer> PathFromNodeToNodeWithPrevCost(
+            final int start, final int end,
+            final TriFunction<Integer, Integer, Integer, Double> prevCost)
     {
         PriorityQueue<QueueEntry> q = new PriorityQueue<>((a, b) -> a.d <= b.d);
         Node u = this.neighbours[start];
@@ -118,7 +118,7 @@ public class Calculator<T> {
                 q.push(new QueueEntry(v, qu, t));
             }
         }
-        ArrayList<Integer> path = new ArrayList<>();
+        List<Integer> path = new ArrayList<>();
         while (null != qu.prev) {
             qu = qu.prev;
             path.add(qu.node.id);
@@ -144,7 +144,7 @@ public class Calculator<T> {
             Node u = q.pop();
             d[u.id] = u.d;
             if (u.id == dest) {
-                ArrayList<Integer> path = new ArrayList<>();
+                List<Integer> path = new ArrayList<>();
                 Node v = u;
                 while (null != v.prev) {
                     path.add(v.prev.id);

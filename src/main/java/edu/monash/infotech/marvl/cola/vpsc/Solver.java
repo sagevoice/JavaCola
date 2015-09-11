@@ -2,17 +2,18 @@ package edu.monash.infotech.marvl.cola.vpsc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class Solver {
 
-    public static final double LAGRANGIAN_TOLERANCE=-1e-4;
-    public static final double ZERO_UPPERBOUND=-1e-10;
+    public static final double LAGRANGIAN_TOLERANCE = -1e-4;
+    public static final double ZERO_UPPERBOUND      = -1e-10;
 
-    public Blocks                bs;
-    public ArrayList<Constraint> inactive;
-    public Variable[] vs;
-    public Constraint[] cs;
+    public Blocks           bs;
+    public List<Constraint> inactive;
+    public Variable[]       vs;
+    public Constraint[]     cs;
 
     public Solver(final Variable[] vs, final Constraint[] cs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
@@ -30,7 +31,7 @@ public class Solver {
         this.inactive = Arrays.stream(cs).map(c -> {
             c.active = false;
             return c;
-        }).collect(Collectors.toCollection(ArrayList::new));
+        }).collect(Collectors.toList());
         this.bs = null;
     }
 
@@ -44,7 +45,7 @@ public class Solver {
         this.inactive = Arrays.stream(this.cs).map(c -> {
             c.active = false;
             return c;
-        }).collect(Collectors.toCollection(ArrayList::new));
+        }).collect(Collectors.toList());
         this.bs = new Blocks(this.vs);
 
         for (int i = 0, n = bs.list.size(); i < n; ++i) {
@@ -62,7 +63,7 @@ public class Solver {
     private Constraint mostViolated() {
         double minSlack = Double.MAX_VALUE;
         Constraint v = null;
-        ArrayList<Constraint> l = this.inactive;
+        List<Constraint> l = this.inactive;
         final int n = l.size();
         int deletePoint = n;
         for (int i = 0; i < n; ++i) {
@@ -81,8 +82,7 @@ public class Solver {
             }
         }
         if (deletePoint != n &&
-            (Solver.ZERO_UPPERBOUND > minSlack && !v.active || v.equality))
-        {
+            (Solver.ZERO_UPPERBOUND > minSlack && !v.active || v.equality)) {
             l.set(deletePoint, l.get(n - 1));
             l.remove(n - 1);
         }

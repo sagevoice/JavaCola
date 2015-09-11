@@ -6,18 +6,18 @@ import java.util.List;
 
 public class LongestCommonSubsequence<T> extends Match {
 
-    public boolean      reversed;
-    public ArrayList<T> s;
-    public ArrayList<T> t;
+    public boolean reversed;
+    public List<T> s;
+    public List<T> t;
 
-    LongestCommonSubsequence(final ArrayList<T> s, final ArrayList<T> t) {
+    LongestCommonSubsequence(final List<T> s, final List<T> t) {
         super();
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.s = s;
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.t = t;
         final Match mf = this.findMatch(s, t);
-        final ArrayList<T> tr = (ArrayList<T>)t.clone();
+        final List<T> tr = new ArrayList<>(t);
         Collections.reverse(tr);
         final Match mr = this.findMatch(s, tr);
         if (mf.length >= mr.length) {
@@ -33,7 +33,7 @@ public class LongestCommonSubsequence<T> extends Match {
         }
     }
 
-    private Match findMatch(final ArrayList<T> s, final ArrayList<T> t) {
+    private Match findMatch(final List<T> s, final List<T> t) {
         final int m = s.size();
         final int n = t.size();
         final Match match = new Match(0, -1, -1);

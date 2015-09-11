@@ -5,6 +5,7 @@ import edu.monash.infotech.marvl.cola.TriFunction;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -35,16 +36,18 @@ public class Geom {
      * @param S array of points
      * @return the convex hull as an array of points
      */
-    public static ArrayList<Point> ConvexHull(Point[] S) {
+    public static List<Point> ConvexHull(Point[] S) {
         Point[] P = (Point[])Arrays.stream(S.clone()).sorted((a, b) -> a.x != b.x ? (int)(b.x - a.x) : (int)(b.y - a.y)).toArray();
         int n = S.length, i;
         int minmin = 0;
         double xmin = P[0].x;
         for (i = 1; i < n; ++i) {
-            if (P[i].x != xmin) break;
+            if (P[i].x != xmin) {
+                break;
+            }
         }
         int minmax = i - 1;
-        ArrayList<Point> H = new ArrayList<>();
+        List<Point> H = new ArrayList<>();
         H.add(P[minmin]); // push minmin point onto stack
         if (minmax == n - 1) { // degenerate case: all x-coords == xmin
             if (P[minmax].y != P[minmin].y) // a  nontrivial segment
@@ -313,8 +316,8 @@ public class Geom {
     }
 
 
-    public static ArrayList<Point> intersects(final LineSegment l, final Point[] P) {
-        final ArrayList<Point> ints = new ArrayList<>();
+    public static List<Point> intersects(final LineSegment l, final Point[] P) {
+        final List<Point> ints = new ArrayList<>();
         for (int i = 1, n = P.length; i < n; ++i) {
             final Point intersection = Rectangle.lineIntersection(
                 l.x1, l.y1,

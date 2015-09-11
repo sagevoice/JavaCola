@@ -2,42 +2,33 @@ package edu.monash.infotech.marvl.cola;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.ToDoubleBiFunction;
 
 /**
  * Descent respects a collection of locks over nodes that should not move
- *
- * Uses a gradient descent approach to reduce a stress or p-stress goal function over a graph with specified ideal edge lengths or a square matrix of dissimilarities.
- * The standard stress function over a graph nodes with position vectors x,y,z is (mathematica input):
- *   stress[x_,y_,z_,D_,w_]:=Sum[w[[i,j]] (length[x[[i]],y[[i]],z[[i]],x[[j]],y[[j]],z[[j]]]-d[[i,j]])^2,{i,Length[x]-1},{j,i+1,Length[x]}]
- * where: D is a square matrix of ideal separations between nodes, w is matrix of weights for those separations
- *        length[x1_, y1_, z1_, x2_, y2_, z2_] = Sqrt[(x1 - x2)^2 + (y1 - y2)^2 + (z1 - z2)^2]
- * below, we use wij = 1/(Dij^2)
- *
+ * <p/>
+ * Uses a gradient descent approach to reduce a stress or p-stress goal function over a graph with specified ideal edge lengths or a square
+ * matrix of dissimilarities. The standard stress function over a graph nodes with position vectors x,y,z is (mathematica input):
+ * stress[x_,y_,z_,D_,w_]:=Sum[w[[i,j]] (length[x[[i]],y[[i]],z[[i]],x[[j]],y[[j]],z[[j]]]-d[[i,j]])^2,{i,Length[x]-1},{j,i+1,Length[x]}]
+ * where: D is a square matrix of ideal separations between nodes, w is matrix of weights for those separations length[x1_, y1_, z1_, x2_,
+ * y2_, z2_] = Sqrt[(x1 - x2)^2 + (y1 - y2)^2 + (z1 - z2)^2] below, we use wij = 1/(Dij^2)
  */
 @Slf4j
 public class Descent {
 
     public double threshold = 0.0001;
-    /** Hessian Matrix
-     */
+    /** Hessian Matrix */
     public double[][][] H;
-    /** gradient vector
-     */
+    /** gradient vector */
     public double[][]   g;
-    /** positions vector
-     */
+    /** positions vector */
     public double[][]   x;
-    /**
-     * dimensionality
-     */
+    /** dimensionality */
     public int          k;
-    /**
-     * number of data-points / nodes / size of vectors/matrices
-     */
+    /** number of data-points / nodes / size of vectors/matrices */
     public int          n;
 
     public Locks locks;
@@ -67,7 +58,7 @@ public class Descent {
 
     private PseudoRandom random = new PseudoRandom();
 
-    public ArrayList<TriConsumer<double[], double[], double[]>> project = null;
+    public List<TriConsumer<double[], double[], double[]>> project = null;
 
     public double[][] D;
     public double[][] G;
@@ -79,9 +70,10 @@ public class Descent {
     /**
      * @param x {number[][]} initial coordinates for nodes
      * @param D {number[][]} matrix of desired distances between pairs of nodes
-     * @param G {number[][]} [default=null] if specified, G is a matrix of weights for goal terms between pairs of nodes.
-     * If G[i][j] > 1 and the separation between nodes i and j is greater than their ideal distance, then there is no contribution for this pair to the goal
-     * If G[i][j] <= 1 then it is used as a weighting on the contribution of the variance between ideal and actual separation between i and j to the goal function
+     * @param G {number[][]} [default=null] if specified, G is a matrix of weights for goal terms between pairs of nodes. If G[i][j] > 1 and
+     *          the separation between nodes i and j is greater than their ideal distance, then there is no contribution for this pair to
+     *          the goal If G[i][j] <= 1 then it is used as a weighting on the contribution of the variance between ideal and actual
+     *          separation between i and j to the goal function
      */
     public Descent(final double[][] x, final double[][] D, final double[][] G) {
         this.x = x;
@@ -173,7 +165,7 @@ public class Descent {
                 Huu[i] = g[i][u] = 0;
             }
             for (int v = 0; v < n; ++v) {
-                if (u == v) continue;
+                if (u == v) { continue; }
 
                 // The following loop randomly displaces nodes that are at identical positions
                 int maxDisplaces = n; // avoid infinite loop in the case of numerical issues, such as huge values
@@ -221,7 +213,7 @@ public class Descent {
             }
         }
         // Grid snap forces
-        double r = this.snapGridSize/2;
+        double r = this.snapGridSize / 2;
         double g = this.snapGridSize;
         double w = this.snapStrength;
         double k = w / (r * r);
@@ -234,7 +226,7 @@ public class Descent {
                 double q = m - f;
                 double a = Math.abs(f);
                 double dx = (0.5 >= a) ? xiu - q * g :
-                    (0 < xiu) ? xiu - (q + 1) * g : xiu - (q - 1) * g;
+                            (0 < xiu) ? xiu - (q + 1) * g : xiu - (q - 1) * g;
                 if (-r < dx && dx <= r) {
                     if (this.scaleSnapByMaxH) {
                         this.g[i][u] += maxH * k * dx;
@@ -379,7 +371,7 @@ public class Descent {
             int j = this.n;
             while (0 < j--) {
                 double x = (this.a[i][j] + 2.0 * this.b[i][j] + 2.0 * this.c[i][j] + this.d[i][j]) / 6.0,
-                    d = this.x[i][j] - x;
+                        d = this.x[i][j] - x;
                 disp += d * d;
                 this.x[i][j] = x;
             }
@@ -389,7 +381,7 @@ public class Descent {
 
     private static void mid(final double[][] a, final double[][] b, final double[][] m) {
         Descent.mApply(a.length, a[0].length, (i, j) ->
-            m[i][j] = a[i][j] + (b[i][j] - a[i][j]) / 2.0);
+                m[i][j] = a[i][j] + (b[i][j] - a[i][j]) / 2.0);
     }
 
     public void takeDescentStep(final double[] x, final double[] d, final double stepSize) {

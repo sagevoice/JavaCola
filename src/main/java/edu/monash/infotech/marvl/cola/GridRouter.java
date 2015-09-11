@@ -15,20 +15,20 @@ import java.util.stream.Stream;
 
 public class GridRouter<T> {
 
-    public NodeWrapper[]          leaves;
-    public NodeWrapper[]          groups;
-    public NodeWrapper[]          nodes;
-    public ArrayList<GridLine>    cols;
-    public ArrayList<GridLine>    rows;
-    public NodeWrapper            root;
-    public ArrayList<Vert>        verts;
-    public ArrayList<LinkWrapper> edges;
-    public NodeWrapper[]          backToFront;
-    public ArrayList<NodeWrapper> obstacles;
-    public ArrayList<LinkWrapper> passableEdges;
-    public T[]                    originalnodes;
-    public NodeAccessor<T>        accessor;
-    public double                 groupPadding;
+    public NodeWrapper[]     leaves;
+    public NodeWrapper[]     groups;
+    public NodeWrapper[]     nodes;
+    public List<GridLine>    cols;
+    public List<GridLine>    rows;
+    public NodeWrapper       root;
+    public List<Vert>        verts;
+    public List<LinkWrapper> edges;
+    public NodeWrapper[]     backToFront;
+    public List<NodeWrapper> obstacles;
+    public List<LinkWrapper> passableEdges;
+    public T[]               originalnodes;
+    public NodeAccessor<T>   accessor;
+    public double            groupPadding;
 
     public GridRouter(final T[] originalnodes, final NodeAccessor<T> accessor) {
         this(originalnodes, accessor, 12.0);
@@ -73,7 +73,7 @@ public class GridRouter<T> {
 
         // nodes ordered by their position in the group hierarchy
         this.backToFront = Arrays.stream(this.nodes).sorted((x, y) -> this.getDepth(x) - this.getDepth(y))
-                                                .collect(Collectors.toList()).toArray(new NodeWrapper[nodes.length]);
+                                 .collect(Collectors.toList()).toArray(new NodeWrapper[nodes.length]);
 
         // compute boundary rectangles for each group
         // has to be done from front to back, i.e. inside groups to outside groups
@@ -90,23 +90,23 @@ public class GridRouter<T> {
             v.rect = r.inflate(this.groupPadding);
         });
 
-        ArrayList<Double> colMids = this.midPoints(this.cols.stream().map(r -> r.pos).collect(Collectors.toList()));
-        ArrayList<Double> rowMids = this.midPoints(this.rows.stream().map(r -> r.pos).collect(Collectors.toList()));
+        final List<Double> colMids = this.midPoints(this.cols.stream().map(r -> r.pos).collect(Collectors.toList()));
+        final List<Double> rowMids = this.midPoints(this.rows.stream().map(r -> r.pos).collect(Collectors.toList()));
 
         // setup extents of lines
         final double rowx = colMids.get(0), rowX = colMids.get(colMids.size() - 1);
         final double coly = rowMids.get(0), colY = rowMids.get(rowMids.size() - 1);
 
         // horizontal lines
-        Stream<GridLineSegment> hlines = Stream.concat(this.rows.stream().map(r -> new GridLineSegment(rowx, r.pos, rowX, r.pos)),
-                                                       rowMids.stream().map(m -> new GridLineSegment(rowx, m, rowX, m)));
+        final Stream<GridLineSegment> hlines = Stream.concat(this.rows.stream().map(r -> new GridLineSegment(rowx, r.pos, rowX, r.pos)),
+                                                             rowMids.stream().map(m -> new GridLineSegment(rowx, m, rowX, m)));
 
         // vertical lines
-        Stream<GridLineSegment> vlines = Stream.concat(this.cols.stream().map(c -> new GridLineSegment(c.pos, coly, c.pos, colY)),
-                                                       colMids.stream().map(m -> new GridLineSegment(m, coly, m, colY)));
+        final Stream<GridLineSegment> vlines = Stream.concat(this.cols.stream().map(c -> new GridLineSegment(c.pos, coly, c.pos, colY)),
+                                                             colMids.stream().map(m -> new GridLineSegment(m, coly, m, colY)));
 
         // the full set of lines
-        Stream<GridLineSegment> lines = Stream.concat(hlines, vlines);
+        final Stream<GridLineSegment> lines = Stream.concat(hlines, vlines);
 
         // we record the vertices associated with each line
         lines.forEach(l -> {l.verts = new ArrayList<>();});
@@ -166,33 +166,36 @@ public class GridRouter<T> {
 
     private double avg(List<Double> a) {
         final Optional<Double> result = a.stream().reduce((x, y) -> x + y);
-        return result.get()/a.size();
+        return result.get() / a.size();
     }
 
     // in the given axis, find sets of leaves overlapping in that axis
     // center of each GridLine is average of all nodes in column
-    private ArrayList<GridLine> getGridLines(final String axis) {
-        ArrayList<GridLine> columns = new ArrayList<>();
+    private List<GridLine> getGridLines(final String axis) {
+        final List<GridLine> columns = new ArrayList<>();
         final List<NodeWrapper> ls = Arrays.asList(this.leaves);
         if ("x".equals(axis)) {
             while (0 < ls.size()) {
                 // find a column of all leaves overlapping in axis with the first leaf
-                ArrayList<NodeWrapper> overlapping = ls.stream().filter(v -> (0 != v.rect.overlapX(ls.get(0).rect)))
-                                                       .collect(Collectors.toCollection(ArrayList::new));
-                GridLine col = new GridLine(overlapping, this.avg(overlapping.stream().map(v -> v.rect.cx()).collect(Collectors.toList())));
+                final List<NodeWrapper> overlapping = ls.stream().filter(v -> (0 != v.rect.overlapX(ls.get(0).rect)))
+                                                        .collect(Collectors.toList());
+                final GridLine col = new GridLine(overlapping,
+                                                  this.avg(overlapping.stream().map(v -> v.rect.cx()).collect(Collectors.toList())));
                 columns.add(col);
                 col.nodes.forEach(v -> ls.remove(v));
             }
         } else if ("y".equals(axis)) {
             while (0 < ls.size()) {
                 // find a column of all leaves overlapping in axis with the first leaf
-                ArrayList<NodeWrapper> overlapping = ls.stream().filter(v -> (0 != v.rect.overlapY(ls.get(0).rect)))
-                                                       .collect(Collectors.toCollection(ArrayList::new));
-                final GridLine col = new GridLine(overlapping, this.avg(overlapping.stream().map(v -> v.rect.cy()).collect(Collectors.toList())));
+                final List<NodeWrapper> overlapping = ls.stream().filter(v -> (0 != v.rect.overlapY(ls.get(0).rect)))
+                                                        .collect(Collectors.toList());
+                final GridLine col = new GridLine(overlapping,
+                                                  this.avg(overlapping.stream().map(v -> v.rect.cy()).collect(Collectors.toList())));
                 columns.add(col);
                 col.nodes.forEach(v -> ls.remove(v));
             }
         }
+        //noinspection NumericCastThatLosesPrecision
         columns.sort((a, b) -> (int)(a.pos - b.pos));
         return columns;
     }
@@ -209,9 +212,9 @@ public class GridRouter<T> {
     }
 
     // medial axes between node centres and also boundary lines for the grid
-    private ArrayList<Double> midPoints(final List<Double> a) {
+    private List<Double> midPoints(final List<Double> a) {
         final double gap = a.get(1) - a.get(0);
-        final ArrayList<Double> mids = new ArrayList<>();
+        final List<Double> mids = new ArrayList<>();
         mids.add(a.get(0) - gap / 2);
         for (int i = 1; i < a.size(); i++) {
             mids.add((a.get(i) + a.get(i - 1)) / 2);
@@ -221,9 +224,9 @@ public class GridRouter<T> {
     }
 
     // find path from v to root including both v and root
-    private ArrayList<NodeWrapper> findLineage(final NodeWrapper v) {
+    private List<NodeWrapper> findLineage(final NodeWrapper v) {
         NodeWrapper u = v;
-        ArrayList<NodeWrapper> lineage = new ArrayList<>();
+        final List<NodeWrapper> lineage = new ArrayList<>();
         lineage.add(u);
         do {
             u = u.parent;
@@ -235,41 +238,41 @@ public class GridRouter<T> {
 
     // find path connecting a and b through their lowest common ancestor
     private AncestorPath findAncestorPathBetween(final NodeWrapper a, final NodeWrapper b) {
-        ArrayList<NodeWrapper> aa = this.findLineage(a), ba = this.findLineage(b);
+        final List<NodeWrapper> aa = this.findLineage(a), ba = this.findLineage(b);
         int i = 0;
         while (aa.get(i) == ba.get(i)) {
             i++;
         }
         // i-1 to include common ancestor only once (as first element)
         return new AncestorPath(aa.get(i - 1), Stream.concat(aa.subList(i, aa.size()).stream(), ba.subList(i, ba.size()).stream())
-                                                     .collect(Collectors.toCollection(ArrayList::new)));
+                                                     .collect(Collectors.toList()));
     }
 
     // when finding a path between two nodes a and b, siblings of a and b on the
     // paths from a and b to their least common ancestor are obstacles
-    private ArrayList<NodeWrapper> siblingObstacles(final NodeWrapper a, final NodeWrapper b) {
+    private List<NodeWrapper> siblingObstacles(final NodeWrapper a, final NodeWrapper b) {
         final AncestorPath path = this.findAncestorPathBetween(a, b);
         final Map<Integer, Boolean> lineageLookup = new HashMap<>();
         path.lineages.forEach(v -> lineageLookup.put(v.id, true));
         Stream<Integer> obstaclesStream = path.commonAncestor.children.stream().filter(v -> !lineageLookup.containsKey(v));
 
         final List<NodeWrapper> filteredLineage = path.lineages.stream().filter(v -> v.parent != path.commonAncestor)
-                                                .collect(Collectors.toList());
+                                                      .collect(Collectors.toList());
         for (int i = 0, n = filteredLineage.size(); i < n; i++) {
             final NodeWrapper v = filteredLineage.get(i);
             obstaclesStream = Stream.concat(obstaclesStream, v.parent.children.stream().filter(c -> c != v.id));
         }
 
-        return obstaclesStream.map(v -> this.nodes[v]).collect(Collectors.toCollection(ArrayList::new));
+        return obstaclesStream.map(v -> this.nodes[v]).collect(Collectors.toList());
     }
 
     // for the given routes, extract all the segments orthogonal to the axis x
     // and return all them grouped by x position
-    private static ArrayList<SegmentSet> getSegmentSets(final ArrayList<ArrayList<Segment>> routes, final String x) {
+    private static List<SegmentSet> getSegmentSets(final List<List<Segment>> routes, final String x) {
         // vsegments is a list of vertical segments sorted by x position
-        final ArrayList<Segment> vsegments = new ArrayList<>();
+        final List<Segment> vsegments = new ArrayList<>();
         for (int ei = 0; ei < routes.size(); ei++) {
-            final ArrayList<Segment> route = routes.get(ei);
+            final List<Segment> route = routes.get(ei);
             for (int si = 0; si < route.size(); si++) {
                 Segment s = route.get(si);
                 s.edgeid = ei;
@@ -283,7 +286,7 @@ public class GridRouter<T> {
         vsegments.sort((a, b) -> (int)(a.p(0).p(x) - b.p(0).p(x)));
 
         // vsegmentsets is a set of sets of segments grouped by x position
-        final ArrayList<SegmentSet> vsegmentsets = new ArrayList<>();
+        final List<SegmentSet> vsegmentsets = new ArrayList<>();
         SegmentSet segmentset = null;
         for (int i = 0; i < vsegments.size(); i++) {
             Segment s = vsegments.get(i);
@@ -303,7 +306,7 @@ public class GridRouter<T> {
     //   e1 = edge of s1, e2 = edge of s2
     //   if leftOf(e1,e2) create constraint s1.x + gap <= s2.x
     //   else if leftOf(e2,e1) create cons. s2.x + gap <= s1.x
-    private static void nudgeSegs(final String x, final String y, ArrayList<ArrayList<Segment>> routes, final ArrayList<Segment> segments,
+    private static void nudgeSegs(final String x, final String y, List<List<Segment>> routes, final List<Segment> segments,
                                   ToBooleanBiFunction<Integer, Integer> leftOf, double gap)
     {
         final int n = segments.size();
@@ -311,8 +314,8 @@ public class GridRouter<T> {
             return;
         }
         final Variable[] vs = segments.stream().map(s -> new Variable(s.p(0).p(x)))
-                                                  .collect(Collectors.toList()).toArray(new Variable[segments.size()]);
-        ArrayList<Constraint> cs = new ArrayList<>();
+                                      .collect(Collectors.toList()).toArray(new Variable[segments.size()]);
+        List<Constraint> cs = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
                 if (i == j) {
@@ -363,7 +366,7 @@ public class GridRouter<T> {
             double pos = v.position();
             s.p(0).p(x, pos);
             s.p(1).p(x, pos);
-            final ArrayList<Segment> route = routes.get(s.edgeid);
+            final List<Segment> route = routes.get(s.edgeid);
             if (0 < s.i) {
                 route.get(s.i - 1).p(1).p(x, pos);
             }
@@ -373,21 +376,21 @@ public class GridRouter<T> {
         }
     }
 
-    public static void nudgeSegments(final ArrayList<ArrayList<Segment>> routes, String x, String y,
-                                     ToBooleanBiFunction<Integer, Integer> leftOf, double gap)
+    public static void nudgeSegments(final List<List<Segment>> routes, final String x, final String y,
+                                     final ToBooleanBiFunction<Integer, Integer> leftOf, final double gap)
     {
-        ArrayList<SegmentSet> vsegmentsets = GridRouter.getSegmentSets(routes, x);
+        List<SegmentSet> vsegmentsets = GridRouter.getSegmentSets(routes, x);
         // scan the grouped (by x) segment sets to find co-linear bundles
         for (int i = 0; i < vsegmentsets.size(); i++) {
             SegmentSet ss = vsegmentsets.get(i);
-            ArrayList<GridEvent> events = new ArrayList<>();
+            List<GridEvent> events = new ArrayList<>();
             for (int j = 0; j < ss.segments.size(); j++) {
                 Segment s = ss.segments.get(j);
                 events.add(new GridEvent(0, s, Math.min(s.p(0).p(y), s.p(1).p(y))));
                 events.add(new GridEvent(1, s, Math.max(s.p(0).p(y), s.p(1).p(y))));
             }
             events.sort((a, b) -> (int)(a.pos - b.pos) + a.type - b.type);
-            ArrayList<Segment> open = new ArrayList<>();
+            List<Segment> open = new ArrayList<>();
             int openCount = 0;
             for (int k = 0; k < events.size(); k++) {
                 final GridEvent e = events.get(k);
@@ -412,14 +415,14 @@ public class GridRouter<T> {
     // @param source function to retrieve the index of the source node for a given edge
     // @param target function to retrieve the index of the target node for a given edge
     // @returns an array giving, for each edge, an array of segments, each segment a pair of points in an array
-    public ArrayList<ArrayList<Segment>> routeEdges(ArrayList<LinkWrapper> edges, double nudgeGap, ToIntFunction<LinkWrapper> source,
-                                                    ToIntFunction<LinkWrapper> target)
+    public List<List<Segment>> routeEdges(final List<LinkWrapper> edges, final double nudgeGap, final ToIntFunction<LinkWrapper> source,
+                                                    final ToIntFunction<LinkWrapper> target)
     {
-        ArrayList<GridPath<Vert>> routePaths = edges.stream().map(e -> this.route(source.applyAsInt(e), target.applyAsInt(e)))
-                                                     .collect(Collectors.toCollection(ArrayList::new));
+        List<GridPath<Vert>> routePaths = edges.stream().map(e -> this.route(source.applyAsInt(e), target.applyAsInt(e)))
+                                                    .collect(Collectors.toList());
         ToBooleanBiFunction<Integer, Integer> order = GridRouter.orderEdges(routePaths);
-        ArrayList<ArrayList<Segment>> routes = routePaths.stream().map(e -> GridRouter.makeSegments(e))
-                                                         .collect(Collectors.toCollection(ArrayList::new));
+        final List<List<Segment>> routes = routePaths.stream().map(e -> GridRouter.makeSegments(e))
+                                                         .collect(Collectors.toList());
         GridRouter.nudgeSegments(routes, "x", "y", order, nudgeGap);
         GridRouter.nudgeSegments(routes, "y", "x", order, nudgeGap);
         GridRouter.unreverseEdges(routes, routePaths);
@@ -428,9 +431,9 @@ public class GridRouter<T> {
 
     // path may have been reversed by the subsequence processing in orderEdges
     // so now we need to restore the original order
-    private static void unreverseEdges(final ArrayList<ArrayList<Segment>> routes, final ArrayList<GridPath<Vert>> routePaths) {
+    private static void unreverseEdges(final List<List<Segment>> routes, final List<GridPath<Vert>> routePaths) {
         for (int i = 0, n = routes.size(); i < n; i++) {
-            final ArrayList<Segment> segments = routes.get(i);
+            final List<Segment> segments = routes.get(i);
             GridPath<Vert> path = routePaths.get(i);
             if (path.reversed) {
                 Collections.reverse(segments); // reverse order of segments
@@ -462,7 +465,7 @@ public class GridRouter<T> {
 
     // for the given list of ordered pairs, returns a function that (efficiently) looks-up a specific pair to
     // see if it exists in the list
-    private static ToBooleanBiFunction<Integer, Integer> getOrder(final ArrayList<Pair> pairs) {
+    private static ToBooleanBiFunction<Integer, Integer> getOrder(final List<Pair> pairs) {
         final Map<Integer, Map<Integer, Boolean>> outgoing = new HashMap<>();
         for (int i = 0, n = pairs.size(); i < n; i++) {
             final Pair p = pairs.get(i);
@@ -476,8 +479,8 @@ public class GridRouter<T> {
 
     // returns an ordering (a lookup function) that determines the correct order to nudge the
     // edge paths apart to minimize crossings
-    private static ToBooleanBiFunction<Integer, Integer> orderEdges(final ArrayList<GridPath<Vert>> routePaths) {
-        final ArrayList<Pair> edgeOrder = new ArrayList<>();
+    private static ToBooleanBiFunction<Integer, Integer> orderEdges(final List<GridPath<Vert>> routePaths) {
+        final List<Pair> edgeOrder = new ArrayList<>();
         final int n = routePaths.size();
         for (int i = 0; i < n - 1; i++) {
             for (int j = i + 1; j < n; j++) {
@@ -532,11 +535,11 @@ public class GridRouter<T> {
     // for an orthogonal path described by a sequence of points, create a list of segments
     // if consecutive segments would make a straight line they are merged into a single segment
     // segments are over cloned points, not the original vertices
-    public static ArrayList<Segment> makeSegments(final GridPath<Vert> path) {
+    public static List<Segment> makeSegments(final GridPath<Vert> path) {
         final TriFunction<Point, Point, Point, Boolean> isStraight = (a, b, c) -> 0.001 >
                                                                                   Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x
                                                                                                                                       - a.x));
-        final ArrayList<Segment> segments = new ArrayList<>();
+        final List<Segment> segments = new ArrayList<>();
         Point a = copyPoint(path.get(0));
         for (int i = 1; i < path.size(); i++) {
             final Point b = copyPoint(path.get(i));
@@ -562,7 +565,7 @@ public class GridRouter<T> {
                     v = this.verts.get(e.target);
             return !(null != u.node && obstacleLookup.containsKey(u.node.id)
                      || null != v.node && obstacleLookup.containsKey(v.node.id));
-        }).collect(Collectors.toCollection(ArrayList::new));
+        }).collect(Collectors.toList());
 
         // add dummy segments linking ports inside source and target
         for (int i = 1, n = source.ports.size(); i < n; i++) {
@@ -580,7 +583,8 @@ public class GridRouter<T> {
                 getTarget = e -> e.target;
         final ToDoubleFunction<LinkWrapper> getLength = e -> e.length;
 
-        final Calculator<LinkWrapper> shortestPathCalculator = new Calculator<>(verts.size(), passableEdges.toArray(new LinkWrapper[passableEdges.size()]), getSource, getTarget, getLength);
+        final Calculator<LinkWrapper> shortestPathCalculator = new Calculator<>(verts.size(), passableEdges
+                .toArray(new LinkWrapper[passableEdges.size()]), getSource, getTarget, getLength);
         final TriFunction<Integer, Integer, Integer, Double> bendPenalty = (u, v, w) -> {
             final Vert a = this.verts.get(u), b = this.verts.get(v), c = this.verts.get(w);
             final double dx = Math.abs(c.x - a.x), dy = Math.abs(c.y - a.y);
@@ -590,7 +594,7 @@ public class GridRouter<T> {
         };
 
         // get shortest path
-        ArrayList<Integer> shortestPath = shortestPathCalculator.PathFromNodeToNodeWithPrevCost(
+        final List<Integer> shortestPath = shortestPathCalculator.PathFromNodeToNodeWithPrevCost(
                 source.ports.get(0).id, target.ports.get(0).id, bendPenalty);
 
         // shortest path is reversed and does not include the target port
@@ -604,11 +608,13 @@ public class GridRouter<T> {
             int i = pathPoints.indexOf(v);
             return !(i < pathPoints.size() - 1 && pathPoints.get(i + 1).node == source && v.node == source
                      || i > 0 && v.node == target && pathPoints.get(i - 1).node == target);
-                }).collect(Collectors.toCollection(GridPath::new));
+        }).collect(Collectors.toCollection(GridPath::new));
     }
 
-    public static RoutePath getRoutePath(final Point[][] route, final double cornerradius, final double arrowwidth, final double arrowheight) {
-        final RoutePath result = new RoutePath ("M " + route[0][0].x + " " + route[0][0].y + " ", "" );
+    public static RoutePath getRoutePath(final Point[][] route, final double cornerradius, final double arrowwidth,
+                                         final double arrowheight)
+    {
+        final RoutePath result = new RoutePath("M " + route[0][0].x + " " + route[0][0].y + " ", "");
         if (1 < route.length) {
             for (int i = 0; i < route.length; i++) {
                 Point[] li = route[i];
@@ -641,16 +647,16 @@ public class GridRouter<T> {
                     double cy = Math.abs(y2 - y);
                     result.routepath += "A " + cx + " " + cy + " 0 0 " + angle + " " + x2 + " " + y2 + " ";
                 } else {
-                    double[] arrowtip = new double[]{x, y};
+                    double[] arrowtip = new double[] {x, y};
                     double[] arrowcorner1, arrowcorner2;
                     if (0 < Math.abs(dx)) {
                         x -= dx / Math.abs(dx) * arrowheight;
-                        arrowcorner1 = new double[]{x, y + arrowwidth};
-                        arrowcorner2 = new double[]{x, y - arrowwidth};
+                        arrowcorner1 = new double[] {x, y + arrowwidth};
+                        arrowcorner2 = new double[] {x, y - arrowwidth};
                     } else {
                         y -= dy / Math.abs(dy) * arrowheight;
-                        arrowcorner1 = new double[]{x + arrowwidth, y};
-                        arrowcorner2 = new double[]{x - arrowwidth, y};
+                        arrowcorner1 = new double[] {x + arrowwidth, y};
+                        arrowcorner2 = new double[] {x - arrowwidth, y};
                     }
                     result.routepath += "L " + x + " " + y + " ";
                     if (0 < arrowheight) {
@@ -664,16 +670,16 @@ public class GridRouter<T> {
             double x = li[1].x, y = li[1].y;
             double dx = x - li[0].x;
             double dy = y - li[0].y;
-            double[] arrowtip = new double[]{x, y};
+            double[] arrowtip = new double[] {x, y};
             double[] arrowcorner1, arrowcorner2;
             if (0 < Math.abs(dx)) {
                 x -= dx / Math.abs(dx) * arrowheight;
-                arrowcorner1 = new double[]{x, y + arrowwidth};
-                arrowcorner2 = new double[]{x, y - arrowwidth};
+                arrowcorner1 = new double[] {x, y + arrowwidth};
+                arrowcorner2 = new double[] {x, y - arrowwidth};
             } else {
                 y -= dy / Math.abs(dy) * arrowheight;
-                arrowcorner1 = new double[]{x + arrowwidth, y};
-                arrowcorner2 = new double[]{x - arrowwidth, y};
+                arrowcorner1 = new double[] {x + arrowwidth, y};
+                arrowcorner2 = new double[] {x - arrowwidth, y};
             }
             result.routepath += "L " + x + " " + y + " ";
             if (0 < arrowheight) {

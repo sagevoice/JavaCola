@@ -2,18 +2,18 @@ package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.vpsc.Rectangle;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class NodeWrapper {
 
-    public boolean            leaf;
-    public NodeWrapper        parent;
-    public ArrayList<Vert>    ports;
-    public int                id;
-    public Rectangle          rect;
-    public ArrayList<Integer> children;
+    public boolean       leaf;
+    public NodeWrapper   parent;
+    public List<Vert>    ports;
+    public int           id;
+    public Rectangle     rect;
+    public List<Integer> children;
 
-    NodeWrapper(final int id, final Rectangle rect, final ArrayList<Integer> children) {
+    NodeWrapper(final int id, final Rectangle rect, final List<Integer> children) {
         this.id = id;
         this.rect = rect;
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter

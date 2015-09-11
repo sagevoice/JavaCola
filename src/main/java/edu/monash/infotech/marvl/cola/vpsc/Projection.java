@@ -196,8 +196,8 @@ public class Projection {
         );
     }
 
-    public ArrayList<TriConsumer<double[], double[], double[]>> projectFunctions() {
-        ArrayList<TriConsumer<double[], double[], double[]>> result = new ArrayList<>(2);
+    public List<TriConsumer<double[], double[], double[]>> projectFunctions() {
+        final List<TriConsumer<double[], double[], double[]>> result = new ArrayList<>(2);
         result.add((x0, y0, x) -> this.xProject(x0, y0, x));
         result.add((x0, y0, y) -> this.yProject(x0, y0, y));
         return result;

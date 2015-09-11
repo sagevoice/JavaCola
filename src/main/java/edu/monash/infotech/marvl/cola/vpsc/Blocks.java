@@ -2,11 +2,12 @@ package edu.monash.infotech.marvl.cola.vpsc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class Blocks {
 
-    public final ArrayList<Block> list;
-    public final Variable[]       vs;
+    public final List<Block> list;
+    public final Variable[]  vs;
 
     public Blocks(final Variable[] vs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
@@ -64,7 +65,7 @@ public class Blocks {
     }
 
     // split each block across its constraint with the minimum lagrangian
-    public void split(final ArrayList<Constraint> inactive) {
+    public void split(final List<Constraint> inactive) {
         this.updateBlockPositions();
         this.list.forEach(b -> {
             final Constraint v = b.findMinLM();

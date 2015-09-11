@@ -2,11 +2,11 @@ package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.vpsc.Rectangle;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public interface NodeAccessor<T> {
 
-    ArrayList<Integer> getChildren(final T v);
+    List<Integer> getChildren(final T v);
 
     Rectangle getBounds(final T v);
 }
