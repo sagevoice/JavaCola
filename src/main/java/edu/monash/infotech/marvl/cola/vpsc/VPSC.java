@@ -12,7 +12,7 @@ public class VPSC {
 
     public static Rectangle computeGroupBounds(final Group g) {
         if (null != g.leaves) {
-            final Leaf leafUnion = Arrays.stream(g.leaves).reduce(new Leaf(Rectangle.empty(), null), (l1, l2) -> {
+            final Leaf leafUnion = g.leaves.stream().reduce(new Leaf(Rectangle.empty(), null), (l1, l2) -> {
                 l1.bounds = l1.bounds.union(l2.bounds);
                 return l1;
             });
@@ -22,7 +22,7 @@ public class VPSC {
         }
 
         if (null != g.groups) {
-            final Group groupUnion = Arrays.stream(g.groups).reduce(new Group(g.bounds), (g1, g2) -> {
+            final Group groupUnion = g.groups.stream().reduce(new Group(g.bounds), (g1, g2) -> {
                 g1.bounds = computeGroupBounds(g2).union(g1.bounds);
                 return g1;
             });
@@ -162,11 +162,11 @@ public class VPSC {
                                                                  final boolean isContained)
     {
         final double padding = root.padding;
-        final int gn = (null != root.groups) ? root.groups.length : 0;
-        final int ln = (null != root.leaves) ? root.leaves.length : 0;
+        final int gn = (null != root.groups) ? root.groups.size() : 0;
+        final int ln = (null != root.leaves) ? root.leaves.size() : 0;
         final ArrayList<Constraint> childConstraints = new ArrayList<>();
         for (int j = 0; j < gn; j++) {
-            final Group g = root.groups[j];
+            final Group g = root.groups.get(j);
             childConstraints.addAll(generateGroupConstraints(g, f, minSep, true));
         }
 
@@ -188,12 +188,12 @@ public class VPSC {
             vs[i++] = root.maxVar;
         }
         for (int j = 0; j < ln; j++) {
-            final Leaf l = root.leaves[j];
+            final Leaf l = root.leaves.get(j);
             rs[i] = l.bounds;
             vs[i++] = l.variable;
         }
         for (int j = 0; j < gn; j++) {
-            final Group g = root.groups[j];
+            final Group g = root.groups.get(j);
             final Rectangle b = g.bounds;
             rs[i] = f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b));
             vs[i++] = g.minVar;
@@ -208,7 +208,7 @@ public class VPSC {
                 c.left.cOut.add(c);
                 c.right.cIn.add(c);
             });
-            Arrays.stream(root.groups).forEach(g -> {
+            root.groups.stream().forEach(g -> {
                 final double gapAdjustment = (g.padding - f.getSize(g.bounds)) / 2;
                 g.minVar.cIn.forEach(c -> {
                     c.gap += gapAdjustment;
