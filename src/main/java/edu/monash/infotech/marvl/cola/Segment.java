@@ -14,10 +14,10 @@ public class Segment {
         this.p1 = p1;
     }
 
-    public Point p(final int i){
-        if( 0 == i) {
+    public Point get(final int index){
+        if( 0 == index) {
             return p0;
-        } else if (1 == i) {
+        } else if (1 == index) {
             return p1;
         }
         return null;

@@ -101,13 +101,13 @@ public class Projection {
             axis = "x";
             dim = "width";
         }
-        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes[o.node]).sorted((a, b) -> (int)(a.p(axis) - b.p(axis)))
+        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes[o.node]).sorted((a, b) -> (int)(a.get(axis) - b.get(axis)))
                                 .collect(Collectors.toList()).toArray(new GraphNode[c.offsets.size()]);
         GraphNode p = null;
         for (int i = 0; i < vs.length; i++) {
             final GraphNode v = vs[i];
             if (null != p) {
-                v.p(axis, p.p(axis) + p.d(dim) + 1);
+                v.set(axis, p.get(axis) + p.get(dim) + 1);
             }
             p = v;
         }

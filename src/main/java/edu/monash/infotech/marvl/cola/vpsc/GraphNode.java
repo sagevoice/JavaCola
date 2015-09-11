@@ -12,20 +12,24 @@ public class GraphNode extends Point {
     public double          px;
     public double          py;
 
-    public double d(final String s) {
-        if ("x".equals(s)) {
+    @Override
+    public double get(final String key) {
+        if ("width".equals(key)) {
             return this.width;
-        } else if ("y".equals(s)) {
+        } else if ("height".equals(key)) {
             return this.height;
         }
-        return 0.0;
+        return super.get(key);
     }
 
-    public void d(final String s, final double v) {
-        if ("x".equals(s)) {
-            this.width = v;
-        } else if ("y".equals(s)) {
-            this.height = v;
+    @Override
+    public void set(final String key, final double value) {
+        if ("width".equals(key)) {
+            this.width = value;
+        } else if ("height".equals(key)) {
+            this.height = value;
+        } else {
+            super.set(key, value);
         }
     }
 

@@ -277,21 +277,21 @@ public class GridRouter<T> {
                 Segment s = route.get(si);
                 s.edgeid = ei;
                 s.i = si;
-                final double sdx = s.p(1).p(x) - s.p(0).p(x);
+                final double sdx = s.get(1).get(x) - s.get(0).get(x);
                 if (0.1 > Math.abs(sdx)) {
                     vsegments.add(s);
                 }
             }
         }
-        vsegments.sort((a, b) -> (int)(a.p(0).p(x) - b.p(0).p(x)));
+        vsegments.sort((a, b) -> (int)(a.get(0).get(x) - b.get(0).get(x)));
 
         // vsegmentsets is a set of sets of segments grouped by x position
         final List<SegmentSet> vsegmentsets = new ArrayList<>();
         SegmentSet segmentset = null;
         for (int i = 0; i < vsegments.size(); i++) {
             Segment s = vsegments.get(i);
-            if (null == segmentset || 0.1 < Math.abs(s.p(0).p(x) - segmentset.pos)) {
-                segmentset = new SegmentSet(s.p(0).p(x), new ArrayList<>());
+            if (null == segmentset || 0.1 < Math.abs(s.get(0).get(x) - segmentset.pos)) {
+                segmentset = new SegmentSet(s.get(0).get(x), new ArrayList<>());
                 vsegmentsets.add(segmentset);
             }
             segmentset.segments.add(s);
@@ -313,7 +313,7 @@ public class GridRouter<T> {
         if (1 >= n) {
             return;
         }
-        final Variable[] vs = segments.stream().map(s -> new Variable(s.p(0).p(x)))
+        final Variable[] vs = segments.stream().map(s -> new Variable(s.get(0).get(x)))
                                       .collect(Collectors.toList()).toArray(new Variable[segments.size()]);
         List<Constraint> cs = new ArrayList<>();
         for (int i = 0; i < n; i++) {
@@ -321,11 +321,11 @@ public class GridRouter<T> {
                 if (i == j) {
                     continue;
                 }
-                Segment s1 = segments.get(i),
+                final Segment s1 = segments.get(i),
                         s2 = segments.get(j);
-                int e1 = s1.edgeid,
-                        e2 = s2.edgeid,
-                        lind = -1,
+                final int e1 = s1.edgeid,
+                        e2 = s2.edgeid;
+                int lind = -1,
                         rind = -1;
                 // in page coordinates (not cartesian) the notion of 'leftof' is flipped in the horizontal axis from the vertical axis
                 // that is, when nudging vertical segments, if they increase in the y(conj) direction the segment belonging to the
@@ -334,7 +334,7 @@ public class GridRouter<T> {
                 // then the 'left' segment needs to go higher, i.e. to have y pos less than that of the right
                 if ("x".equals(x)) {
                     if (leftOf.applyAsBoolean(e1, e2)) {
-                        if (s1.p(0).p(y) < s1.p(1).p(y)) {
+                        if (s1.get(0).get(y) < s1.get(1).get(y)) {
                             lind = j;
                             rind = i;
                         } else {
@@ -344,7 +344,7 @@ public class GridRouter<T> {
                     }
                 } else {
                     if (leftOf.applyAsBoolean(e1, e2)) {
-                        if (s1.p(0).p(y) < s1.p(1).p(y)) {
+                        if (s1.get(0).get(y) < s1.get(1).get(y)) {
                             lind = i;
                             rind = j;
                         } else {
@@ -358,20 +358,20 @@ public class GridRouter<T> {
                 }
             }
         }
-        final Solver solver = new Solver(vs, (Constraint[])cs.toArray());
+        final Solver solver = new Solver(vs, cs.toArray(new Constraint[cs.size()]));
         solver.solve();
         for (int i = 0; i < vs.length; i++) {
             final Variable v = vs[i];
             Segment s = segments.get(i);
             double pos = v.position();
-            s.p(0).p(x, pos);
-            s.p(1).p(x, pos);
+            s.get(0).set(x, pos);
+            s.get(1).set(x, pos);
             final List<Segment> route = routes.get(s.edgeid);
             if (0 < s.i) {
-                route.get(s.i - 1).p(1).p(x, pos);
+                route.get(s.i - 1).get(1).set(x, pos);
             }
             if (s.i < route.size() - 1) {
-                route.get(s.i + 1).p(0).p(x, pos);
+                route.get(s.i + 1).get(0).set(x, pos);
             }
         }
     }
@@ -379,15 +379,15 @@ public class GridRouter<T> {
     public static void nudgeSegments(final List<List<Segment>> routes, final String x, final String y,
                                      final ToBooleanBiFunction<Integer, Integer> leftOf, final double gap)
     {
-        List<SegmentSet> vsegmentsets = GridRouter.getSegmentSets(routes, x);
+        final List<SegmentSet> vsegmentsets = GridRouter.getSegmentSets(routes, x);
         // scan the grouped (by x) segment sets to find co-linear bundles
         for (int i = 0; i < vsegmentsets.size(); i++) {
-            SegmentSet ss = vsegmentsets.get(i);
+            final SegmentSet ss = vsegmentsets.get(i);
             List<GridEvent> events = new ArrayList<>();
             for (int j = 0; j < ss.segments.size(); j++) {
-                Segment s = ss.segments.get(j);
-                events.add(new GridEvent(0, s, Math.min(s.p(0).p(y), s.p(1).p(y))));
-                events.add(new GridEvent(1, s, Math.max(s.p(0).p(y), s.p(1).p(y))));
+                final Segment s = ss.segments.get(j);
+                events.add(new GridEvent(0, s, Math.min(s.get(0).get(y), s.get(1).get(y))));
+                events.add(new GridEvent(1, s, Math.max(s.get(0).get(y), s.get(1).get(y))));
             }
             events.sort((a, b) -> (int)(a.pos - b.pos) + a.type - b.type);
             List<Segment> open = new ArrayList<>();
@@ -434,7 +434,7 @@ public class GridRouter<T> {
     private static void unreverseEdges(final List<List<Segment>> routes, final List<GridPath<Vert>> routePaths) {
         for (int i = 0, n = routes.size(); i < n; i++) {
             final List<Segment> segments = routes.get(i);
-            GridPath<Vert> path = routePaths.get(i);
+            final GridPath<Vert> path = routePaths.get(i);
             if (path.reversed) {
                 Collections.reverse(segments); // reverse order of segments
                 segments.forEach(segment -> {

@@ -16,10 +16,10 @@ public class LongestCommonSubsequence<T> extends Match {
         this.s = s;
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.t = t;
-        final Match mf = this.findMatch(s, t);
+        final Match mf = findMatch(s, t);
         final List<T> tr = new ArrayList<>(t);
         Collections.reverse(tr);
-        final Match mr = this.findMatch(s, tr);
+        final Match mr = findMatch(s, tr);
         if (mf.length >= mr.length) {
             this.length = mf.length;
             this.si = mf.si;
@@ -33,7 +33,7 @@ public class LongestCommonSubsequence<T> extends Match {
         }
     }
 
-    private Match findMatch(final List<T> s, final List<T> t) {
+    private static <T> Match findMatch(final List<T> s, final List<T> t) {
         final int m = s.size();
         final int n = t.size();
         final Match match = new Match(0, -1, -1);
@@ -42,7 +42,8 @@ public class LongestCommonSubsequence<T> extends Match {
             l[i] = new int[n];
             for (int j = 0; j < n; j++) {
                 if (s.get(i) == t.get(j)) {
-                    int v = l[i][j] = (i == 0 || j == 0) ? 1 : l[i - 1][j - 1] + 1;
+                    final int v = (0 == i || 0 == j) ? 1 : l[i - 1][j - 1] + 1;
+                    l[i][j] = v;
                     if (v > match.length) {
                         match.length = v;
                         match.si = i - v + 1;
