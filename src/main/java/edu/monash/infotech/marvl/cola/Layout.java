@@ -688,10 +688,10 @@ public class Layout {
 
         this._links.forEach(l -> {
             if (l.source instanceof Number) {
-                l.source = this._nodes.get(l.source);
+                l.source = this._nodes.get((Integer)l.source);
             }
             if (l.target instanceof Number) {
-                l.target = this._nodes.get(l.target);
+                l.target = this._nodes.get((Integer)l.target);
             }
         });
         for (int i = 0; i < _nodes.size(); i++) {
@@ -749,32 +749,34 @@ public class Layout {
     /// node array.  This index property is created by the start() method.
     public List<Point> routeEdge(final Link edge, Consumer<TangentVisibilityGraph> draw) {
         List<Point> lineData = new ArrayList<>();
+        final GraphNode source = (GraphNode)edge.source;
+        final GraphNode target = (GraphNode)edge.target;
         //if (d.source.id === 10 && d.target.id === 11) {
         //    debugger;
         //}
         final TangentVisibilityGraph vg2 = new TangentVisibilityGraph(this._visibilityGraph.P, new VisibilityGraph(this._visibilityGraph.V,
                                                                                                                    this._visibilityGraph.E));
-        final TVGPoint port1 = new TVGPoint(edge.source.x, edge.source.y);
-        final TVGPoint port2 = new TVGPoint(edge.target.x, edge.target.y);
-        final VisibilityVertex start = vg2.addPoint(port1, edge.source.index);
-        final VisibilityVertex end = vg2.addPoint(port2, edge.target.index);
-        vg2.addEdgeIfVisible(port1, port2, edge.source.index, edge.target.index);
+        final TVGPoint port1 = new TVGPoint(source.x, source.y);
+        final TVGPoint port2 = new TVGPoint(target.x, target.y);
+        final VisibilityVertex start = vg2.addPoint(port1, source.index);
+        final VisibilityVertex end = vg2.addPoint(port2, target.index);
+        vg2.addEdgeIfVisible(port1, port2, source.index, target.index);
         if (null != draw) {
             draw.accept(vg2);
         }
         final Calculator<VisibilityEdge> spCalc = new Calculator<>(vg2.V.size(), vg2.E, e -> e.source.index, e -> e.target.index, e -> e.length());
         final double[] shortestPath = spCalc.PathFromNodeToNode(start.id, end.id);
         if (1 == shortestPath.length || shortestPath.length == vg2.V.size()) {
-            VPSC.makeEdgeBetween(edge, edge.source.innerBounds, edge.target.innerBounds, 5);
+            VPSC.makeEdgeBetween(edge, source.innerBounds, target.innerBounds, 5);
             lineData.add(new Point(edge.sourceIntersection.x, edge.sourceIntersection.y));
             lineData.add(new Point(edge.arrowStart.x, edge.arrowStart.y));
         } else {
             int n = shortestPath.length - 2;
             final TVGPoint p = vg2.V.get((int)shortestPath[n]).p;
             final TVGPoint q = vg2.V.get((int)shortestPath[0]).p;
-            lineData.add(edge.source.innerBounds.rayIntersection(p.x, p.y));
+            lineData.add(source.innerBounds.rayIntersection(p.x, p.y));
             for (int i = n; i >= 0; --i) { lineData.add(vg2.V.get((int)shortestPath[i]).p); }
-            lineData.add(VPSC.makeEdgeTo(q, edge.target.innerBounds, 5));
+            lineData.add(VPSC.makeEdgeTo(q, target.innerBounds, 5));
         }
         //lineData.forEach((v, i) => {
         //    if (i > 0) {

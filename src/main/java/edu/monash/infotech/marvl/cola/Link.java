@@ -1,14 +1,13 @@
 package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.geom.Point;
-import edu.monash.infotech.marvl.cola.vpsc.GraphNode;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 public class Link {
 
-    public GraphNode source;
-    public GraphNode target;
+    public Object    source;
+    public Object    target;
     public double    length;
 
     // set by VPSC.makeEdgeBetween

@@ -269,8 +269,8 @@ public class HandleDisconnected {
         int clusters = 0;
 
         for (final Link link : links) {
-            final GraphNode n1 = link.source;
-            final GraphNode n2 = link.target;
+            final GraphNode n1 = (GraphNode)link.source;
+            final GraphNode n2 = (GraphNode)link.target;
             if (ways.containsKey(n1.index)) {
                 ways.get(n1.index).add(n2);
             } else {
