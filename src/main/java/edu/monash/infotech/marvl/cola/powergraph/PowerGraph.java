@@ -1,16 +1,15 @@
 package edu.monash.infotech.marvl.cola.powergraph;
 
-import edu.monash.infotech.marvl.cola.Node;
+import edu.monash.infotech.marvl.cola.vpsc.GraphNode;
 import edu.monash.infotech.marvl.cola.vpsc.Group;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class PowerGraph<T> {
 
-    public Groups getGroups(final List<Node> nodes, final List<T> links, final LinkTypeAccessor<T> la, final Group rootGroup) {
+    public Groups getGroups(final List<GraphNode> nodes, final List<T> links, final LinkTypeAccessor<T> la, final Group rootGroup) {
         final int n = nodes.size();
         final Configuration<T> c = new Configuration<>(n, links, la, rootGroup);
         while (c.greedyMerge()) {}

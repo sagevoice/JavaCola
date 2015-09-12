@@ -14,7 +14,7 @@ public class VPSC {
 
     public static Rectangle computeGroupBounds(final Group g) {
         if (null != g.leaves) {
-            final Leaf leafUnion = g.leaves.stream().reduce(new Leaf(Rectangle.empty(), null), (l1, l2) -> {
+            final GraphNode leafUnion = g.leaves.stream().reduce(new GraphNode(Rectangle.empty()), (l1, l2) -> {
                 l1.bounds = l1.bounds.union(l2.bounds);
                 return l1;
             });
@@ -190,7 +190,7 @@ public class VPSC {
             vs[i++] = root.maxVar;
         }
         for (int j = 0; j < ln; j++) {
-            final Leaf l = root.leaves.get(j);
+            final GraphNode l = root.leaves.get(j);
             rs[i] = l.bounds;
             vs[i++] = l.variable;
         }

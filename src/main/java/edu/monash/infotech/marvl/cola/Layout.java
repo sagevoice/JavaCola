@@ -1,4 +1,4 @@
-﻿package edu.monash.infotech.marvl.cola;
+package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.geom.*;
 import edu.monash.infotech.marvl.cola.powergraph.Groups;
@@ -7,15 +7,13 @@ import edu.monash.infotech.marvl.cola.powergraph.PowerGraph;
 import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
 import edu.monash.infotech.marvl.cola.vpsc.*;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Main interface to cola layout.
@@ -43,7 +41,7 @@ public class Layout {
     private double                  _threshold               = 0.01;
     private TangentVisibilityGraph  _visibilityGraph         = null;
     private double                  _groupCompactness        = 1e-6;
-    private ToIntFunction           _linkType                = null;
+    private ToIntFunction<Link>     _linkType                = null;
 
     // sub-class and override this property to replace with a more sophisticated eventing mechanism
     protected Map<EventType, Consumer<Event>> event = null;
@@ -75,7 +73,7 @@ public class Layout {
     // it calls tick() repeatedly until tick returns true (is converged)
     // subclass and override it with something fancier (e.g. dispatch tick on a timer)
     protected void kick() {
-        while (!this.tick()) { ; }
+        while (!this.tick()) {}
     }
 
     /** iterate the layout.  Returns true when layout converged. */
@@ -136,9 +134,9 @@ public class Layout {
             // if we have links but no nodes, create the nodes array now with empty objects for the links to point at.
             int n = 0;
             for (final Link l : this._links) {
-                n = Math.max(n, l.source, l.target);
-            } ;
-            this._nodes = new ArrayList(++n);
+                n = Math.max(n, Math.max((Integer)l.source, (Integer)l.target));
+            }
+            this._nodes = new ArrayList<>(++n);
             for (int i = 0; i < n; ++i) {
                 this._nodes.set(i, new GraphNode());
             }
@@ -169,24 +167,29 @@ public class Layout {
                 g.padding = 1;
             }
             if (null != g.leaves) {
-                //for (int i=0; i<g.leaves.size(); i++) {
-                //    final Leaf v = g.leaves.get(i);
-                //    this._nodes.
-                //}
-                g.leaves.forEach((v, i) -> { (g.leaves[i] = this._nodes.get(v)).parent = g; });
+                for (int i=0; i<g.leaves.size(); i++) {
+                    final GraphNode v = g.leaves.get(i);
+                    final GraphNode u = this._nodes.get(v.id);
+                    u.parent = g;
+                    g.leaves.set(i, u);
+                }
             }
             if (null != g.groups) {
-                g.groups.forEach((gi, i) -> { (g.groups[i] = this._groups.get(gi)).parent = g; });
+                for (int i=0; i<g.groups.size(); i++) {
+                    final Group gi = g.groups.get(i);
+                    final Group u = _groups.get(gi.id);
+                    u.parent = g;
+                    g.groups.set(i, u);
+                }
             }
         });
-        this._rootGroup.leaves = this._nodes.stream().filter(v -> null == v.parent).map((v) -> {return new Leaf(v.bounds, v.variable);})
-                                            .collect(Collectors.toList());
+        this._rootGroup.leaves = this._nodes.stream().filter(v -> null == v.parent).collect(Collectors.toList());
         this._rootGroup.groups = this._groups.stream().filter(g -> null == g.parent).collect(Collectors.toList());
         return this;
     }
 
     public Layout powerGraphGroups(final Consumer<Groups> f) {
-        Groups g = (new PowerGraph()).getGroups(this._nodes, this._links, this.linkAccessor, this._rootGroup);
+        Groups g = (new PowerGraph<Link>()).getGroups(this._nodes, this._links, this.linkAccessor, this._rootGroup);
         this.groups(g.groups);
         f.accept(g);
         return this;
@@ -226,14 +229,6 @@ public class Layout {
         return this;
     }
 
-    /**
-     * causes constraints to be generated such that directed graphs are laid out either from left-to-right or top-to-bottom. a separation
-     * constraint is generated in the selected axis for each edge that is not involved in a cycle (part of a strongly connected component)
-     *
-     * @param axis          {string} 'x' for left-to-right, 'y' for top-to-bottom
-     * @param minSeparation {number|link=>number} either a number specifying a minimum spacing required across all links or a function to
-     *                      return the minimum spacing for each link
-     */
     public Layout flowLayout() {
         return flowLayout("y", 0);
     }
@@ -243,6 +238,14 @@ public class Layout {
         return this;
     }
 
+    /**
+     * causes constraints to be generated such that directed graphs are laid out either from left-to-right or top-to-bottom. a separation
+     * constraint is generated in the selected axis for each edge that is not involved in a cycle (part of a strongly connected component)
+     *
+     * @param axis          {string} 'x' for left-to-right, 'y' for top-to-bottom
+     * @param minSeparation {number|link=>number} either a number specifying a minimum spacing required across all links or a function to
+     *                      return the minimum spacing for each link
+     */
     public Layout flowLayout(final String axis, ToDoubleFunction<Link> minSeparation) {
         this._directedLinkConstraints = new DirectedLinkConstraints(axis, minSeparation);
         return this;
@@ -399,7 +402,7 @@ public class Layout {
     }
 
     public double getLinkLength(final Link link) {
-        return this._linkDistance instanceof ToDoubleFunction ? (((ToDoubleFunction)this._linkDistance).applyAsDouble(link))
+        return this._linkDistance instanceof ToDoubleFunction ? (((ToDoubleFunction<Link>)this._linkDistance).applyAsDouble(link))
                                                               : (Double)this._linkDistance;
     }
 
@@ -613,8 +616,7 @@ public class Layout {
                 y[i++] = 0;
             }
         } else {
-            this._rootGroup = new Group(_nodes.stream().map(v -> new Leaf(v.bounds, v.variable)).collect(Collectors.toList()),
-                                        new ArrayList<>());
+            this._rootGroup = new Group(_nodes, new ArrayList<>());
         }
 
         final List<Constraint> curConstraints = null != this._constraints ? this._constraints : new ArrayList<>();
@@ -652,9 +654,17 @@ public class Layout {
         // subsequent iterations will apply all constraints
         this.avoidOverlaps(ao);
         if (ao) {
-            this._nodes.forEach((v, i) -> { v.x = x[i]; v.y = y[i]; });
+            for (int i=0; i<_nodes.size(); i++) {
+                final GraphNode v = _nodes.get(i);
+                v.x = x[i];
+                v.y = y[i];
+            }
             this._descent.project = new Projection(this._nodes, this._groups, this._rootGroup, curConstraints, true).projectFunctions();
-            this._nodes.forEach((v, i) -> { x[i] = v.x; y[i] = v.y; });
+            for (int i=0; i<_nodes.size(); i++) {
+                final GraphNode v = _nodes.get(i);
+                x[i] = v.x;
+                y[i] = v.y;
+            }
         }
 
         // allow not immediately connected nodes to relax apart (p-stress)
@@ -720,10 +730,17 @@ public class Layout {
     /// find a visibility graph over the set of nodes.  assumes all nodes have a
     /// bounds property (a rectangle) and that no pair of bounds overlaps.
     public void prepareEdgeRouting(final double nodeMargin) {
-        this._visibilityGraph = new TangentVisibilityGraph(
-                this._nodes.stream().map((v) -> {
-                    return v.bounds.inflate(-nodeMargin).vertices();
-                }));
+        final int n = _nodes.size();
+        final Stream<Point[]> stream = this._nodes.stream().map((v) -> {
+                                    return v.bounds.inflate(-nodeMargin).vertices();
+                                });
+        final Stream<TVGPoint[]> stream2 = stream.map(pointArray -> {
+            return Arrays.stream(pointArray).map(p -> {
+                return new TVGPoint(p.x, p.y);
+            }).collect(Collectors.toList()).toArray(new TVGPoint[1]);
+        });
+        final TVGPoint[][] P = stream2.collect(Collectors.toList()).toArray(new TVGPoint[n][1]);
+        this._visibilityGraph = new TangentVisibilityGraph(P);
     }
 
     /// find a route avoiding node bounds for the given edge.
@@ -753,10 +770,10 @@ public class Layout {
             lineData.add(new Point(edge.arrowStart.x, edge.arrowStart.y));
         } else {
             int n = shortestPath.length - 2;
-            final TVGPoint p = vg2.V.get(shortestPath[n]).p;
-            final TVGPoint q = vg2.V.get(shortestPath[0]).p;
+            final TVGPoint p = vg2.V.get((int)shortestPath[n]).p;
+            final TVGPoint q = vg2.V.get((int)shortestPath[0]).p;
             lineData.add(edge.source.innerBounds.rayIntersection(p.x, p.y));
-            for (int i = n; i >= 0; --i) { lineData.add(vg2.V.get(shortestPath[i]).p); }
+            for (int i = n; i >= 0; --i) { lineData.add(vg2.V.get((int)shortestPath[i]).p); }
             lineData.add(VPSC.makeEdgeTo(q, edge.target.innerBounds, 5));
         }
         //lineData.forEach((v, i) => {

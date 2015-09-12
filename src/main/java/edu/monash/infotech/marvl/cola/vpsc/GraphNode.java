@@ -16,6 +16,19 @@ public class GraphNode extends Point {
     public Group           parent;
 
     public Rectangle       innerBounds;
+    public int             id;
+
+    public GraphNode() {
+    }
+
+    public GraphNode(final int id) {
+        this.id = id;
+    }
+
+    public GraphNode(final Rectangle bounds) {
+        this.bounds = bounds;
+    }
+
 
     @Override
     public double get(final String key) {

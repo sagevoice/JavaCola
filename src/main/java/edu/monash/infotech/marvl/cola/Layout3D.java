@@ -2,10 +2,12 @@ package edu.monash.infotech.marvl.cola;
 
 import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
 import edu.monash.infotech.marvl.cola.vpsc.Constraint;
+import edu.monash.infotech.marvl.cola.vpsc.GraphNode;
 import edu.monash.infotech.marvl.cola.vpsc.Projection;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** Use cola to do a layout in 3D!! Yay. Pretty simple for the moment. */
 public class Layout3D {
@@ -104,7 +106,8 @@ public class Layout3D {
         //    axis: 'y', left: e.source, right: e.target, gap: e.length*1.5
         //});
         if (null != this.constraints) {
-            this.descent.project = new Projection(this.nodes, null, null, this.constraints).projectFunctions();
+            final List<GraphNode> nodes2D = nodes.stream().collect(Collectors.toList());
+            this.descent.project = new Projection(nodes2D, null, null, this.constraints).projectFunctions();
         }
 
         for (int i = 0; i < this.nodes.size(); i++) {

@@ -1,8 +1,8 @@
 package edu.monash.infotech.marvl.cola.powergraph;
 
 import edu.monash.infotech.marvl.cola.TriConsumer;
+import edu.monash.infotech.marvl.cola.vpsc.GraphNode;
 import edu.monash.infotech.marvl.cola.vpsc.Group;
-import edu.monash.infotech.marvl.cola.vpsc.Leaf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +52,7 @@ public class Configuration<T> {
         final ModuleSet moduleSet = new ModuleSet();
         this.roots.add(moduleSet);
         for (int i = 0; i < group.leaves.size(); ++i) {
-            final Leaf node = group.leaves.get(i);
+            final GraphNode node = group.leaves.get(i);
             final Module module = new Module(node.id);
             this.modules.set(node.id, module);
             moduleSet.add(module);
@@ -154,7 +154,7 @@ public class Configuration<T> {
                 if (null == group.leaves) {
                     group.leaves = new ArrayList<>();
                 }
-                group.leaves.add(new Leaf(m.id));
+                group.leaves.add(new GraphNode(m.id));
             } else {
                 Group g = group;
                 m.gid = groups.size();

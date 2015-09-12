@@ -7,7 +7,7 @@ public class Group {
     public Rectangle       bounds;
     public double          padding = Double.NaN;
     public double          stiffness;
-    public List<Leaf>      leaves;
+    public List<GraphNode> leaves;
     public List<Group>     groups;
     public IndexedVariable minVar;
     public IndexedVariable maxVar;
@@ -25,7 +25,7 @@ public class Group {
         this.bounds = bounds;
     }
 
-    public Group(final List<Leaf> leaves, final List<Group> groups) {
+    public Group(final List<GraphNode> leaves, final List<Group> groups) {
         this.leaves = leaves;
         this.groups = groups;
     }

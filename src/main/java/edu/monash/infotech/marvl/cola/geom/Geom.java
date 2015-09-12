@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.function.Consumer;
 
 public class Geom {
 
@@ -109,10 +109,10 @@ public class Geom {
     }
 
     // apply f to the points in P in clockwise order around the point p
-    public static void clockwiseRadialSweep(final Point p, final Point[] P, final Function f) {
+    public static void clockwiseRadialSweep(final Point p, final Point[] P, final Consumer<Point> f) {
         Arrays.stream(P.clone()).sorted(
                 (a, b) -> (int)(Math.atan2(a.y - p.y, a.x - p.x) - Math.atan2(b.y - p.y, b.x - p.x))
-        ).forEach((a) -> f.apply(a));
+        ).forEach((a) -> f.accept(a));
     }
 
     public static PolyPoint nextPolyPoint(PolyPoint p, PolyPoint[] ps) {

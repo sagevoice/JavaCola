@@ -6,6 +6,7 @@ public class VisibilityVertex {
     public int      polyid;
     public int      polyvertid;
     public TVGPoint p;
+    public int      index;
 
     VisibilityVertex(final int id, final int polyid, final int polyvertid, final TVGPoint p) {
         this.id = id;
