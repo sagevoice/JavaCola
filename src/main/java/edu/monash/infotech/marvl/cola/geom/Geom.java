@@ -37,7 +37,7 @@ public class Geom {
      * @return the convex hull as an array of points
      */
     public static List<Point> ConvexHull(Point[] S) {
-        Point[] P = (Point[])Arrays.stream(S.clone()).sorted((a, b) -> a.x != b.x ? (int)(b.x - a.x) : (int)(b.y - a.y)).toArray();
+        Point[] P = Arrays.stream(S.clone()).sorted((a, b) -> a.x != b.x ? (int)(b.x - a.x) : (int)(b.y - a.y)).toArray(Point[]::new);
         int n = S.length, i;
         int minmin = 0;
         double xmin = P[0].x;
@@ -50,22 +50,27 @@ public class Geom {
         List<Point> H = new ArrayList<>();
         H.add(P[minmin]); // push minmin point onto stack
         if (minmax == n - 1) { // degenerate case: all x-coords == xmin
-            if (P[minmax].y != P[minmin].y) // a  nontrivial segment
+            if (P[minmax].y != P[minmin].y) {// a  nontrivial segment
                 H.add(P[minmax]);
+            }
         } else {
             // Get the indices of points with max x-coord and min|max y-coord
             int maxmin, maxmax = n - 1;
             double xmax = P[n - 1].x;
-            for (i = n - 2; i >= 0; i--)
-                if (P[i].x != xmax) break;
+            for (i = n - 2; i >= 0; i--) {
+                if (P[i].x != xmax) {
+                    break;
+                }
+            }
             maxmin = i + 1;
 
             // Compute the lower hull on the stack H
             i = minmax;
             while (++i <= maxmin) {
                 // the lower line joins P[minmin]  with P[maxmin]
-                if (0 <= isLeft(P[minmin], P[maxmin], P[i]) && i < maxmin)
+                if (0 <= isLeft(P[minmin], P[maxmin], P[i]) && i < maxmin) {
                     continue; // ignore P[i] above or on the lower line
+                }
 
                 while (1 < H.size()) // there are at least 2 points on the stack
                 {
@@ -82,14 +87,17 @@ public class Geom {
             }
 
             // Next, compute the upper hull on the stack H above the bottom hull
-            if (maxmax != maxmin) // if  distinct xmax points
+            if (maxmax != maxmin) { // if  distinct xmax points
                 H.add(P[maxmax]); // push maxmax point onto stack
+            }
+
             int bot = H.size(); // the bottom point of the upper hull stack
             i = maxmin;
             while (--i >= minmax) {
                 // the upper line joins P[maxmax]  with P[minmax]
-                if (isLeft(P[maxmax], P[minmax], P[i]) >= 0 && i > minmax)
+                if (isLeft(P[maxmax], P[minmax], P[i]) >= 0 && i > minmax) {
                     continue; // ignore P[i] below or on the upper line
+                }
 
                 while (H.size() > bot) // at least 2 points on the upper stack
                 {
@@ -153,8 +161,9 @@ public class Geom {
 
         // rightmost tangent = maximum for the isLeft() ordering
         // test if V[0] is a local maximum
-        if (below(P, V[1], V[0]) && !above(P, V[n - 1], V[0]))
+        if (below(P, V[1], V[0]) && !above(P, V[n - 1], V[0])) {
             return 0;               // V[0] is the maximum tangent point
+        }
 
         for (a = 0, b = n; ;) {          // start chain = [0,n] with V[n]=V[0]
             if (b - a == 1) {
@@ -368,8 +377,11 @@ public class Geom {
     }
 
     public static boolean isPointInsidePoly(Point p, Point[] poly) {
-        for (int i = 1, n = poly.length; i < n; ++i)
-            if (below(poly[i - 1], poly[i], p)) return false;
+        for (int i = 1, n = poly.length; i < n; ++i) {
+            if (below(poly[i - 1], poly[i], p)) {
+                return false;
+            }
+        }
         return true;
     }
 

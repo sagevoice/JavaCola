@@ -6,16 +6,16 @@ import java.util.List;
 
 public class Blocks {
 
-    public final List<Block> list;
-    public final Variable[]  vs;
+    public final List<Block>    list;
+    public final List<Variable> vs;
 
-    public Blocks(final Variable[] vs) {
+    public Blocks(final List<Variable> vs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.vs = vs;
-        int n = vs.length;
+        int n = vs.size();
         this.list = new ArrayList<>(n);
         while (0 < n--) {
-            final Block b = new Block(vs[n]);
+            final Block b = new Block(vs.get(n));
             this.list.set(n, b);
             b.blockInd = n;
         }

@@ -15,49 +15,49 @@ import java.util.stream.Stream;
 
 public class GridRouter<T> {
 
-    public NodeWrapper[]     leaves;
-    public NodeWrapper[]     groups;
-    public NodeWrapper[]     nodes;
+    public List<NodeWrapper> leaves;
+    public List<NodeWrapper> groups;
+    public List<NodeWrapper> nodes;
     public List<GridLine>    cols;
     public List<GridLine>    rows;
     public NodeWrapper       root;
     public List<Vert>        verts;
     public List<LinkWrapper> edges;
-    public NodeWrapper[]     backToFront;
+    public List<NodeWrapper> backToFront;
     public List<NodeWrapper> obstacles;
     public List<LinkWrapper> passableEdges;
-    public T[]               originalnodes;
+    public List<T>           originalnodes;
     public NodeAccessor<T>   accessor;
     public double            groupPadding;
 
-    public GridRouter(final T[] originalnodes, final NodeAccessor<T> accessor) {
+    public GridRouter(final List<T> originalnodes, final NodeAccessor<T> accessor) {
         this(originalnodes, accessor, 12.0);
     }
 
-    public GridRouter(final T[] originalnodes, final NodeAccessor<T> accessor, final double groupPadding) {
+    public GridRouter(final List<T> originalnodes, final NodeAccessor<T> accessor, final double groupPadding) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.originalnodes = originalnodes;
         this.accessor = accessor;
         this.groupPadding = groupPadding;
-        this.nodes = new NodeWrapper[originalnodes.length];
-        for (int i = 0; i < originalnodes.length; i++) {
-            final T v = originalnodes[i];
-            this.nodes[i] = new NodeWrapper(i, accessor.getBounds(v), accessor.getChildren(v));
+        this.nodes = new ArrayList<>(originalnodes.size());
+        for (int i = 0; i < originalnodes.size(); i++) {
+            final T v = originalnodes.get(i);
+            this.nodes.set(i, new NodeWrapper(i, accessor.getBounds(v), accessor.getChildren(v)));
         }
-        this.leaves = Arrays.stream(this.nodes).filter(v -> v.leaf).collect(Collectors.toList()).toArray(new NodeWrapper[1]);
-        this.groups = Arrays.stream(this.nodes).filter(g -> !g.leaf).collect(Collectors.toList()).toArray(new NodeWrapper[1]);
+        this.leaves = this.nodes.stream().filter(v -> v.leaf).collect(Collectors.toList());
+        this.groups = this.nodes.stream().filter(g -> !g.leaf).collect(Collectors.toList());
 
         this.cols = this.getGridLines("x");
         this.rows = this.getGridLines("y");
 
         // create parents for each node or group that is a member of another's children
-        Arrays.stream(this.groups).forEach(v -> v.children.forEach(c -> {
-            this.nodes[c].parent = v;
+        this.groups.forEach(v -> v.children.forEach(c -> {
+            this.nodes.get(c).parent = v;
         }));
 
         // root claims the remaining orphans
         this.root = new NodeWrapper(-1, Rectangle.empty(), new ArrayList<>());
-        Arrays.stream(this.nodes).forEach(v -> {
+        this.nodes.forEach(v -> {
             if (null == v.parent) {
                 v.parent = this.root;
                 this.root.children.add(v.id);
@@ -72,20 +72,20 @@ public class GridRouter<T> {
         });
 
         // nodes ordered by their position in the group hierarchy
-        this.backToFront = Arrays.stream(this.nodes).sorted((x, y) -> this.getDepth(x) - this.getDepth(y))
-                                 .collect(Collectors.toList()).toArray(new NodeWrapper[nodes.length]);
+        this.backToFront = this.nodes.stream().sorted((x, y) -> this.getDepth(x) - this.getDepth(y))
+                                 .collect(Collectors.toList());
 
         // compute boundary rectangles for each group
         // has to be done from front to back, i.e. inside groups to outside groups
         // such that each can be made large enough to enclose its interior
-        List<NodeWrapper> list = Arrays.asList(this.backToFront.clone());
+        List<NodeWrapper> list = new ArrayList<>(this.backToFront);
         Collections.reverse(list);
         Stream<NodeWrapper> frontToBackGroups = list.stream().filter(g -> !g.leaf);
         frontToBackGroups.forEach(v -> {
             Rectangle r = Rectangle.empty();
             for (int i = 0, n = v.children.size(); i < n; i++) {
                 int c = v.children.get(i);
-                r = r.union(this.nodes[c].rect);
+                r = r.union(this.nodes.get(c).rect);
             }
             v.rect = r.inflate(this.groupPadding);
         });
@@ -124,9 +124,9 @@ public class GridRouter<T> {
                                    this.verts.add(p);
 
                                    // assign vertices to the nodes immediately under them
-                                   int i = this.backToFront.length;
+                                   int i = this.backToFront.size();
                                    while (0 < i--) {
-                                       NodeWrapper node = this.backToFront[i];
+                                       NodeWrapper node = this.backToFront.get(i);
                                        Rectangle r = node.rect;
                                        double dx = Math.abs(p.x - r.cx()),
                                                dy = Math.abs(p.y - r.cy());
@@ -140,7 +140,7 @@ public class GridRouter<T> {
 
         lines.forEach(l -> {
             // create vertices at the intersections of nodes and lines
-            Arrays.stream(this.nodes).forEach(v -> {
+            this.nodes.forEach(v -> {
                 v.rect.lineIntersections(l.x1, l.y1, l.x2, l.y2).forEach(intersect -> {
                     Vert p = new Vert(this.verts.size(), intersect.x, intersect.y, v, l);
                     this.verts.add(p);
@@ -173,7 +173,7 @@ public class GridRouter<T> {
     // center of each GridLine is average of all nodes in column
     private List<GridLine> getGridLines(final String axis) {
         final List<GridLine> columns = new ArrayList<>();
-        final List<NodeWrapper> ls = Arrays.asList(this.leaves);
+        final List<NodeWrapper> ls = this.leaves;
         if ("x".equals(axis)) {
             while (0 < ls.size()) {
                 // find a column of all leaves overlapping in axis with the first leaf
@@ -263,7 +263,7 @@ public class GridRouter<T> {
             obstaclesStream = Stream.concat(obstaclesStream, v.parent.children.stream().filter(c -> c != v.id));
         }
 
-        return obstaclesStream.map(v -> this.nodes[v]).collect(Collectors.toList());
+        return obstaclesStream.map(v -> this.nodes.get(v)).collect(Collectors.toList());
     }
 
     // for the given routes, extract all the segments orthogonal to the axis x
@@ -313,8 +313,8 @@ public class GridRouter<T> {
         if (1 >= n) {
             return;
         }
-        final Variable[] vs = segments.stream().map(s -> new Variable(s.get(0).get(x)))
-                                      .collect(Collectors.toList()).toArray(new Variable[segments.size()]);
+        final List<Variable> vs = segments.stream().map(s -> new Variable(s.get(0).get(x)))
+                                      .collect(Collectors.toList());
         List<Constraint> cs = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
@@ -354,14 +354,14 @@ public class GridRouter<T> {
                     }
                 }
                 if (0 <= lind) {
-                    cs.add(new Constraint(vs[lind], vs[rind], gap));
+                    cs.add(new Constraint(vs.get(lind), vs.get(rind), gap));
                 }
             }
         }
-        final Solver solver = new Solver(vs, cs.toArray(new Constraint[cs.size()]));
+        final Solver solver = new Solver(vs, cs);
         solver.solve();
-        for (int i = 0; i < vs.length; i++) {
-            final Variable v = vs[i];
+        for (int i = 0; i < vs.size(); i++) {
+            final Variable v = vs.get(i);
             Segment s = segments.get(i);
             double pos = v.position();
             s.get(0).set(x, pos);
@@ -555,7 +555,7 @@ public class GridRouter<T> {
     // find a route between node s and node t
     // returns an array of indices to verts
     public GridPath<Vert> route(final int s, final int t) {
-        final NodeWrapper source = this.nodes[s], target = this.nodes[t];
+        final NodeWrapper source = this.nodes.get(s), target = this.nodes.get(t);
         this.obstacles = this.siblingObstacles(source, target);
 
         final Map<Integer, NodeWrapper> obstacleLookup = new HashMap<>();
@@ -600,7 +600,7 @@ public class GridRouter<T> {
         // shortest path is reversed and does not include the target port
         Collections.reverse(shortestPath);
         List<Vert> pathPoints = shortestPath.stream().map(vi -> this.verts.get(vi)).collect(Collectors.toList());
-        pathPoints.add(this.nodes[target.id].ports.get(0));
+        pathPoints.add(this.nodes.get(target.id).ports.get(0));
 
         // filter out any extra end points that are inside the source or target (i.e. the dummy segments above)
 

@@ -1,7 +1,6 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,23 +11,23 @@ public class Solver {
 
     public Blocks           bs;
     public List<Constraint> inactive;
-    public Variable[]       vs;
-    public Constraint[]     cs;
+    public List<Variable>   vs;
+    public List<Constraint> cs;
 
-    public Solver(final Variable[] vs, final Constraint[] cs) {
+    public Solver(final List<Variable> vs, final List<Constraint> cs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.vs = vs;
-        Arrays.stream(vs).forEach(v -> {
+        vs.forEach(v -> {
             v.cIn = new ArrayList<>();
             v.cOut = new ArrayList<>();
         });
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.cs = cs;
-        Arrays.stream(cs).forEach(c -> {
+        cs.forEach(c -> {
             c.left.cOut.add(c);
             c.right.cIn.add(c);
         });
-        this.inactive = Arrays.stream(cs).map(c -> {
+        this.inactive = cs.stream().map(c -> {
             c.active = false;
             return c;
         }).collect(Collectors.toList());
@@ -42,7 +41,7 @@ public class Solver {
     // set starting positions without changing desired positions.
     // Note: it throws away any previous block structure.
     public void setStartingPositions(final double[] ps) {
-        this.inactive = Arrays.stream(this.cs).map(c -> {
+        this.inactive = this.cs.stream().map(c -> {
             c.active = false;
             return c;
         }).collect(Collectors.toList());
@@ -55,8 +54,8 @@ public class Solver {
     }
 
     public void setDesiredPositions(final double[] ps) {
-        for (int i = 0; i < this.vs.length; ++i) {
-            this.vs[i].desiredPosition = ps[i];
+        for (int i = 0; i < this.vs.size(); ++i) {
+            this.vs.get(i).desiredPosition = ps[i];
         }
     }
 

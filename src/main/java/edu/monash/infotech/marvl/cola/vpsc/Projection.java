@@ -13,13 +13,13 @@ import java.util.stream.Stream;
 
 public class Projection {
 
-    private List<Constraint>  xConstraints;
-    private List<Constraint>  yConstraints;
-    private IndexedVariable[] variables;
-    private List<GraphNode>   nodes;
-    private List<Group>       groups;
-    private Group             rootGroup;
-    private boolean           avoidOverlaps;
+    private List<Constraint> xConstraints;
+    private List<Constraint> yConstraints;
+    private List<Variable>   variables;
+    private List<GraphNode>  nodes;
+    private List<Group>      groups;
+    private Group            rootGroup;
+    private boolean          avoidOverlaps;
 
     public Projection(final List<GraphNode> nodes, final List<Group> groups) {
         this(nodes, groups, null);
@@ -47,11 +47,11 @@ public class Projection {
         if (avoidOverlaps && null != rootGroup && null != rootGroup.groups) {
             vlen += 2 * groups.size();
         }
-        this.variables = new IndexedVariable[vlen];
+        this.variables = new ArrayList<>(vlen);
         for (int i = 0; i < nodes.size(); i++) {
             final GraphNode v = nodes.get(i);
             v.variable = new IndexedVariable(i, 1.0);
-            this.variables[i] = v.variable;
+            this.variables.set(i, v.variable);
         }
 
         if (null != constraints) {
@@ -74,9 +74,9 @@ public class Projection {
                 final Group g = groups.get(j);
 
                 g.minVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
-                this.variables[i] = g.minVar;
+                this.variables.set(i, g.minVar);
                 g.maxVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
-                this.variables[i] = g.maxVar;
+                this.variables.set(i, g.maxVar);
             }
         }
     }
@@ -126,14 +126,14 @@ public class Projection {
     private void createConstraints(final List<Constraint> constraints) {
         final Function<Constraint, Boolean> isSep = c -> null == c.type || "separation".equals(c.type);
         this.xConstraints = constraints.stream()
-                                  .filter(c -> "x".equals(c.axis) && isSep.apply(c))
-                                  .map(c -> this.createSeparation(c)).collect(Collectors.toList());
+                                       .filter(c -> "x".equals(c.axis) && isSep.apply(c))
+                                       .map(c -> this.createSeparation(c)).collect(Collectors.toList());
         this.yConstraints = constraints.stream()
-                                  .filter(c -> "y".equals(c.axis) && isSep.apply(c))
-                                  .map(c -> this.createSeparation(c)).collect(Collectors.toList());
+                                       .filter(c -> "y".equals(c.axis) && isSep.apply(c))
+                                       .map(c -> this.createSeparation(c)).collect(Collectors.toList());
         constraints.stream()
-              .filter(c -> "alignment".equals(c.type))
-              .forEach(c -> this.createAlignment(c));
+                   .filter(c -> "alignment".equals(c.type))
+                   .forEach(c -> this.createAlignment(c));
     }
 
     private void setupVariablesAndBounds(final double[] x0, final double[] y0, final double[] desired,
@@ -216,14 +216,14 @@ public class Projection {
             VPSC.computeGroupBounds(this.rootGroup);
             cs = Stream.concat(cs.stream(), Arrays.stream(generateConstraints.apply(this.rootGroup))).collect(Collectors.toList());
         }
-        this.solve(this.variables, cs.toArray(new Constraint[cs.size()]), start, desired);
+        this.solve(this.variables, cs, start, desired);
         this.nodes.forEach(updateNodeBounds);
         if (null != this.rootGroup && this.avoidOverlaps) {
             this.groups.forEach(updateGroupBounds);
         }
     }
 
-    private void solve(Variable[] vs, Constraint[] cs, double[] starting, double[] desired) {
+    private void solve(List<Variable> vs, List<Constraint> cs, double[] starting, double[] desired) {
         final Solver solver = new Solver(vs, cs);
         solver.setStartingPositions(starting);
         solver.setDesiredPositions(desired);

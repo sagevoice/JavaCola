@@ -33,7 +33,6 @@ public class Descent {
 
     public Locks locks;
 
-    private static final double zeroDistance = 1e-10;
     private double minD;
 
     // pool of arrays of size n used internally, allocated in constructor
@@ -139,14 +138,15 @@ public class Descent {
     }
 
     private double[] offsetDir() {
-        double[] u = new double[this.k];
+        final double[] u = new double[this.k];
         double l = 0;
         for (int i = 0; i < this.k; ++i) {
-            double x = u[i] = this.random.getNextBetween(0.01, 1) - 0.5;
-            l += x * x;
+            final double r = this.random.getNextBetween(0.01, 1) - 0.5;
+            u[i] = r;
+            l += r * r;
         }
         final double l2 = Math.sqrt(l);
-        return Arrays.stream(u).map(x -> x *= minD / l2).toArray();
+        return Arrays.stream(u).map(x -> {x *= minD / l2; return x;}).toArray();
     }
 
     // compute first and second derivative information storing results in this.g and this.H
