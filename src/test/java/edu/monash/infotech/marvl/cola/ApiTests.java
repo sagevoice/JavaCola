@@ -1,7 +1,50 @@
-﻿///<reference path="qunit.d.ts"/>
-///<reference path="../src/layout.ts"/>
-///<reference path="../src/layout3d.ts"/>
+﻿package edu.monash.infotech.marvl.cola;
 
+import org.testng.annotations.*;
+import org.testng.Assert;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class ApiTests {
+
+    protected class IntLinkAccessor implements LinkAccessor<int[]> {
+
+        @Override
+        public int getSourceIndex(int[] l) {
+            return l[0];
+        }
+
+        @Override
+        public int getTargetIndex(int[] l) {
+            return l[1];
+        }
+    }
+
+    @Test(groups = { "Headless API" }, description = "strongly connected components")
+    public void StronglyConnectedComponentsTest() {
+        final IntLinkAccessor la = new IntLinkAccessor();
+
+        final List<int[]> links1 = new ArrayList<>();
+        links1.add(new int[] {0, 1});
+        final List<List<Integer>> components1 = LinkLengths.stronglyConnectedComponents(2, links1, la);
+        Assert.assertEquals(components1.size(), 2);
+
+        final List<int[]> links2 = Arrays.asList(new int[]{0, 1}, new int[]{1, 2}, new int[]{2, 0});
+        final List<List<Integer>> components2 = LinkLengths.stronglyConnectedComponents(3, links2, la);
+        Assert.assertEquals(components2.size(), 1);
+
+        final List<int[]> links3 = Arrays.asList(new int[]{0, 1}, new int[]{1, 2}, new int[]{2, 0}, new int[]{2, 3}, new int[]{3, 4}, new int[]{4, 5}, new int[]{5, 3});
+        final List<List<Integer>> components3 = LinkLengths.stronglyConnectedComponents(6, links3, la);
+        Assert.assertEquals(components3.size(), 2);
+
+        final List<int[]> links4 = Arrays.asList(new int[]{0, 1}, new int[]{1, 2}, new int[]{2, 0}, new int[]{2, 3}, new int[]{3, 4}, new int[]{4, 2});
+        final List<List<Integer>> components4 = LinkLengths.stronglyConnectedComponents(5, links4, la);
+        Assert.assertEquals(components4.size(), 1);
+    }
+
+}
 QUnit.module("Headless API");
 test('strongly connected components', () => {
     var la = <cola.LinkAccessor<number[]>> {
