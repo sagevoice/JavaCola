@@ -9,6 +9,9 @@ public class LayoutAdaptor extends Layout {
     public VoidConsumer                                   kickCallback;
     public BiFunction<EventType, Consumer<Event>, Layout> onCallback;
 
+    public LayoutAdaptor() {
+    }
+
     public LayoutAdaptor(final Options options) {
         triggerCallback = options.trigger;
         kickCallback = options.kick;
