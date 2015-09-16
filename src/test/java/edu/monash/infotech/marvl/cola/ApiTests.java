@@ -205,7 +205,7 @@ public class ApiTests {
                     for (int j = 0; j < Layout3D.k; j++) {
                         final String d = Layout3D.dims.get(j);
                         Assert.assertTrue(closeEnough.apply(layout.result[j][i], nodes.get(i).get(d), Double.valueOf(1)),
-                                          String.format("nodes[%d] lock in $s-axis at %f, actual=%f", i, d, nodes.get(i).get(d),
+                                          String.format("nodes[%d] lock in %s-axis at %f, actual=%f", i, d, nodes.get(i).get(d),
                                                         layout.result[j][i]));
                     }
                 }
