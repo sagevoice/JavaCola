@@ -142,15 +142,18 @@ public class Calculator<T> {
             Node u = q.pop();
             d[u.id] = u.d;
             if (u.id == dest) {
-                List<Integer> path = new ArrayList<>();
+                final List<Double> path = new ArrayList<>();
                 Node v = u;
                 while (null != v.prev) {
-                    path.add(v.prev.id);
+                    path.add(Double.valueOf(v.prev.id));
                     v = v.prev;
                 }
-                // TODO: What should this code really return here, and why?
-                // return path;
-                return null;
+                final double[] result = new double[path.size()];
+                i = 0;
+                for (Double p : path ) {
+                    result[i++] = p.doubleValue();
+                }
+                return result;
             }
             i = u.neighbours.size();
             while (0 < i--) {
