@@ -33,7 +33,7 @@ public class Configuration<T> {
             final ModuleSet root = new ModuleSet();
             for (int i = 0; i < n; ++i) {
                 final Module m = new Module(i);
-                this.modules.set(i, m);
+                this.modules.add(m);
                 root.add(m);
             }
             this.roots.add(root);
@@ -115,7 +115,7 @@ public class Configuration<T> {
         for (int i = 0, i_ = n - 1; i < i_; ++i) {
             for (int j = i + 1; j < n; ++j) {
                 final Module a = rs.get(i), b = rs.get(j);
-                merges.set(ctr, new Merge(ctr, this.nEdges(a, b), a, b));
+                merges.add(new Merge(ctr, this.nEdges(a, b), a, b));
                 ctr++;
             }
         }

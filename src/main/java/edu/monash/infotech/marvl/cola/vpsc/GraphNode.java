@@ -7,7 +7,7 @@ public class GraphNode extends Point {
     public Rectangle       bounds;
     public IndexedVariable variable;
     // if fixed, layout will not move the node from its specified starting position
-    public int             fixed;
+    public boolean         fixed;
     public double          width;
     public double          height;
     public double          px = Double.NaN;

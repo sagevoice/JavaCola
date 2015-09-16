@@ -103,6 +103,9 @@ public class LinkLengths {
     {
         final List<List<Integer>> components = stronglyConnectedComponents(n, links, la);
         final List<Integer> nodes = new ArrayList<>(n);
+        for (int i=0; i < n; i++) {
+            nodes.add(Integer.valueOf(0));
+        }
         for (int i = 0; i < components.size(); i++) {
             final List<Integer> c = components.get(i);
             final int j = i;

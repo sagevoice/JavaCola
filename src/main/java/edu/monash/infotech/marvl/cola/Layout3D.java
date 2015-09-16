@@ -112,7 +112,7 @@ public class Layout3D {
 
         for (int i = 0; i < this.nodes.size(); i++) {
             final Node3D v = this.nodes.get(i);
-            if (0 < (v.fixed & 1)) {
+            if (v.fixed) {
                 this.descent.locks.add(i, new double[] {v.x, v.y, v.z});
             }
         }
@@ -125,7 +125,7 @@ public class Layout3D {
         this.descent.locks.clear();
         for (int i = 0; i < this.nodes.size(); i++) {
             final Node3D v = this.nodes.get(i);
-            if (0 < (v.fixed & 1)) {
+            if (v.fixed) {
                 this.descent.locks.add(i, new double[] {v.x, v.y, v.z});
             }
         }

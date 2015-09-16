@@ -183,22 +183,22 @@ public class VPSC {
                     open = f.getOpen(b), close = f.getClose(b),
                     min = c - s + padding / 2, max = c + s - padding / 2;
             root.minVar.desiredPosition = min;
-            rs[i] = f.makeRect(open, close, min, padding);
-            vs.set(i++, root.minVar);
+            rs[i++] = f.makeRect(open, close, min, padding);
+            vs.add(root.minVar);
             root.maxVar.desiredPosition = max;
-            rs[i] = f.makeRect(open, close, max, padding);
-            vs.set(i++, root.maxVar);
+            rs[i++] = f.makeRect(open, close, max, padding);
+            vs.add(root.maxVar);
         }
         for (int j = 0; j < ln; j++) {
             final GraphNode l = root.leaves.get(j);
-            rs[i] = l.bounds;
-            vs.set(i++, l.variable);
+            rs[i++] = l.bounds;
+            vs.add(l.variable);
         }
         for (int j = 0; j < gn; j++) {
             final Group g = root.groups.get(j);
             final Rectangle b = g.bounds;
-            rs[i] = f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b));
-            vs.set(i++, g.minVar);
+            rs[i++] = f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b));
+            vs.add(g.minVar);
         }
         final List<Constraint> cs = generateConstraints(rs, vs, f, minSep);
         if (0 < gn) {

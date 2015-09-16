@@ -51,7 +51,7 @@ public class Projection {
         for (int i = 0; i < nodes.size(); i++) {
             final GraphNode v = nodes.get(i);
             v.variable = new IndexedVariable(i, 1.0);
-            this.variables.set(i, v.variable);
+            this.variables.add(v.variable);
         }
 
         if (null != constraints) {
@@ -141,7 +141,7 @@ public class Projection {
     {
         for (int i = 0; i < nodes.size(); i++) {
             final GraphNode v = nodes.get(i);
-            if (0 < (v.fixed & 1)) {
+            if (v.fixed) {
                 v.variable.weight = 1000;
                 desired[i] = getDesired.applyAsDouble(v);
             } else {

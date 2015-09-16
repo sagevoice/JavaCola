@@ -92,7 +92,7 @@ public class Layout {
         this._descent.locks.clear();
         for (i = 0; i < n; ++i) {
             o = this._nodes.get(i);
-            if (0 < (o.fixed & 1)) {
+            if (o.fixed) {
                 if (Double.isNaN(o.px) || Double.isNaN(o.py)) {
                     o.px = o.x;
                     o.py = o.y;
@@ -138,7 +138,7 @@ public class Layout {
             }
             this._nodes = new ArrayList<>(++n);
             for (int i = 0; i < n; ++i) {
-                this._nodes.set(i, new GraphNode());
+                this._nodes.add(new GraphNode());
             }
         }
         return this._nodes;
@@ -633,7 +633,7 @@ public class Layout {
         this._descent.locks.clear();
         for (int i = 0; i < n; ++i) {
             final GraphNode o = this._nodes.get(i);
-            if (0 < (o.fixed & 1)) {
+            if (o.fixed) {
                 o.px = o.x;
                 o.py = o.y;
                 double[] p = new double[] {o.x, o.y};
@@ -806,31 +806,6 @@ public class Layout {
     // Get a string ID for a given link.
     static String linkId(final Link e) {
         return Layout.getSourceIndex(e) + "-" + Layout.getTargetIndex(e);
-    }
-
-    // The fixed property has three bits:
-    // Bit 1 can be set externally (e.g., d.fixed = true) and show persist.
-    // Bit 2 stores the dragging state, from mousedown to mouseup.
-    // Bit 3 stores the hover state, from mouseover to mouseout.
-    // Dragend is a special case: it also clears the hover state.
-
-    static void dragStart(final GraphNode d) {
-        d.fixed |= 2; // set bit 2
-        d.px = d.x; d.py = d.y; // set velocity to zero
-    }
-
-    static void dragEnd(final GraphNode d) {
-        d.fixed &= ~6; // unset bits 2 and 3
-        //d.fixed = 0;
-    }
-
-    static void mouseOver(final GraphNode d) {
-        d.fixed |= 4; // set bit 3
-        d.px = d.x; d.py = d.y; // set velocity to zero
-    }
-
-    static void mouseOut(final GraphNode d) {
-        d.fixed &= ~4; // unset bit 3
     }
 }
 
