@@ -1,15 +1,6 @@
-﻿/// <reference path="qunit.js"/>
-/// <reference path="qunit.d.ts"/>
-/// <reference path="../extern/d3.v3.min.js"/>
-/// <reference path="../src/layout.js"/>
-/// <reference path="../src/d3adaptor.js"/>
-/// <reference path="../src/shortestpaths.js"/>
-/// <reference path="../src/descent.js"/>
-/// <reference path="../src/rectangle.js"/>
-/// <reference path="../src/geom.js"/>
-/// <reference path="../src/powergraph.js"/>
-/// <reference path="../src/gridrouter.js"/>
+﻿package edu.monash.infotech.marvl.cola;
 
+public class Tests {
 function nodeDistance(u, v) {
     var dx = u.x - v.x, dy = u.y - v.y;
     return Math.sqrt(dx * dx + dy * dy);
@@ -178,29 +169,17 @@ asyncTest("equality constraints", function () {
 });
 
 test("convex hulls", function () {
-    var draw = false;
     var rand = new cola.PseudoRandom();
     var nextInt = function (r) { return Math.round(rand.getNext() * r) }
     var width = 100, height = 100;
 
     for (var k = 0; k < 10; ++k) {
-        if (draw) {
-            var svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
-        }
         var P = [];
         for (var i = 0; i < 5; ++i) {
             var p;
             P.push(p = { x: nextInt(width), y: nextInt(height) });
-            if (draw) svg.append("circle").attr("cx", p.x).attr("cy", p.y).attr('fill', 'green').attr("r", 5);
         }
         var h = cola.geom.ConvexHull(P);
-        if (draw) {
-            var lineFunction = d3.svg.line().x(function (d) { return d.x; }).y(function (d) { return d.y; }).interpolate("linear");
-            svg.append("path").attr("d", lineFunction(h))
-                .attr("stroke", "blue")
-                .attr("stroke-width", 2)
-                .attr("fill", "none");
-        }
 
         for (var i = 2; i < h.length; ++i) {
             var p = h[i - 2], q = h[i - 1], r = h[i];
@@ -214,12 +193,8 @@ test("convex hulls", function () {
 });
 
 test("radial sort", function () {
-    var draw = false;
     var n = 100;
     var width = 400, height = 400;
-    if (draw) {
-        var svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
-    }
     var P = [];
     var x = 0, y = 0;
     var rand = new cola.PseudoRandom(5);
@@ -228,7 +203,6 @@ test("radial sort", function () {
         var p;
         P.push(p = { x: nextInt(width), y: nextInt(height) });
         x += p.x; y += p.y;
-        if (draw) svg.append("circle").attr("cx", p.x).attr("cy", p.y).attr('fill', 'green').attr("r", 5);
     }
     var q = { x: x / n, y: y / n };
     //console.log(q);
@@ -239,11 +213,6 @@ test("radial sort", function () {
             ok(il >= 0);
         }
         p0 = p;
-        if (draw) {
-            svg.append("line").attr('x1', q.x).attr('y1', q.y).attr('x2', p.x).attr("y2", p.y)
-                .attr("stroke", d3.interpolateRgb("yellow", "red")(i / n))
-                .attr("stroke-width", 2)
-        }
     });
 });
 
@@ -304,47 +273,6 @@ function makeNonoverlappingPolys(rand, n) {
         p.forEach(function (p) { p.x -= minX; p.y -= minY; });
     });
     return P;
-}
-
-function drawPoly(svg, P) {
-    for (var i = 0; i < P.length; ++i) {
-        var lineFunction = d3.svg.line().x(function (d) { return d.x * 10; }).y(function (d) { return d.y * 10; }).interpolate("linear");
-        svg.append("path")
-            .attr({
-                d: lineFunction(P),
-                stroke: "blue",
-                'stroke-width': 1,
-                fill: "none"
-            });
-    }
-    if (arguments.length > 2) {
-        var label = arguments[2];
-        svg.append("text").attr("x", 10 * P[0].x).attr("y", 10 * P[0].y).attr("fill", "red").text(label);
-    }
-}
-
-function drawLine(svg, l) {
-    var stroke = "green";
-    if (arguments.length > 2) {
-        stroke = arguments[2];
-    }
-    svg.append("line").attr({
-        x1: 10 * l.x1,
-        y1: 10 * l.y1,
-        x2: 10 * l.x2,
-        y2: 10 * l.y2,
-        stroke: stroke,
-        'stroke-width': 2
-    });
-}
-
-function drawCircle(svg, p) {
-    svg.append("circle").attr({
-        cx: 10 * p.x,
-        cy: 10 * p.y,
-        fill: 'red',
-        r: 3
-    });
 }
 
 function midPoint(p) {
@@ -450,51 +378,8 @@ test('metro crossing min', function () {
         cola.GridRouter.nudgeSegments(routes, 'x', 'y', order, 2);
         cola.GridRouter.nudgeSegments(routes, 'y', 'x', order, 2);
         cola.GridRouter.unreverseEdges(routes, edges);
-        draw();
     }
 
-    var draw = function () {
-        var svg = d3.select("body").append("svg").attr("width", 100).attr("height", 100).append('g').attr('transform', 'scale(4,4)');
-
-        svg.append('svg:defs').append('svg:marker')
-            .attr({
-                id: 'end-arrow',
-                viewBox: '0 -5 10 10',
-                refX: 8,
-                markerWidth: 3,
-                markerHeight: 3,
-                orient: 'auto'
-            })
-          .append('svg:path')
-            .attr({
-                d: 'M0,-5L10,0L0,5L2,0',
-                'stroke-width': '0px',
-                fill: '#000'
-            });
-        var color = d3.scale.category10();
-        // draw segments
-        var getPoints = function (segs) {
-            return [segs[0][0]].concat(segs.map(function (s) { return s[1] }));
-        }
-        var lineFunction = d3.svg.line()
-            .x(function (d) { return d.x; })
-            .y(function (d) { return d.y; }).interpolate('linear');
-        var edgepaths = svg.selectAll(".edge").data(routes).enter()
-            .append('path').attr('class', 'edge').attr('opacity', 0.5)
-            .attr('d', function (d) { return lineFunction(getPoints(d)) })
-            .attr('stroke', function (d, i) { return color(i) })
-            .attr('fill', 'none')
-            .style('marker-end', 'url(#end-arrow)');
-        svg.selectAll('.node').data(verts).enter()
-            .append('ellipse').attr({rx: 1, ry: 1, opacity: 0.5})
-            .attr('cx', function (d) { return d.x }).attr('cy', function (d) { return d.y })
-        // draw from edge paths
-        //var edgepaths = svg.selectAll(".edge").data(edges).enter()
-        //    .append('path').attr('class', 'edge').attr('opacity', 0.5)
-        //    .attr('d', function (d) { return lineFunction(d) })
-        //    .attr('stroke', function (d) { return color(d.id) })
-        //    .attr('fill', 'none')
-    }
     // trivial case
     twoParallelSegments();
     nudge();
@@ -557,7 +442,6 @@ test('metro crossing min', function () {
 //    have infinite weight while those inside the source and target node have zero weight
 //  - augment dijkstra with a cost for bends
 asyncTest('grid router', function() {
-    var draw = true;
     d3.json("../examples/graphdata/tetrisbugmultiedgeslayout.json", function (error, graph) {
         var gridrouter = new cola.GridRouter(graph.nodes,{
             getChildren: function(v) {
@@ -599,72 +483,6 @@ asyncTest('grid router', function() {
         source = 1, target = 2;
         shortestPath = gridrouter.route(source, target);
 
-        if (draw) {
-            var svg = d3.select("body").append("svg").attr({width: 800, height: 400}).append('g').attr('transform', 'scale(0.5,0.8)')
-            var color = d3.scale.category10();
-            function color(d) { return 'grey' }
-            var nodegroups = svg.selectAll('.gridNodes')
-                .data(gridrouter.backToFront)
-                .enter()
-                .append('g')
-                .attr('transform',function (d) { return 'translate('+d.rect.x+','+d.rect.y+')' });
-            nodegroups
-                .append('rect')
-                .attr('width', function (d) { return d.rect.width() })
-                .attr('height', function (d) { return d.rect.height() })
-                .style('fill', function (d) { return d.leaf ? 'beige' : 'blue' })
-                .style('opacity', function (d) { return d.leaf ? 1: 0.5 })
-                //.style('fill', 'beige')
-                .style('stroke-width','2');
-            nodegroups.append('text')
-                .attr('x', 10)
-                .attr('y',function(d) { return d.rect.height()/2 })
-                .text(function (d) { return d.id/* +":" + d.name*/ })
-            svg.selectAll('.edges')
-                .data(gridrouter.passableEdges)
-                .enter()
-                .append('line')
-                .attr('x1',function(d) {return gridrouter.verts[d.source].x})
-                .attr('y1',function(d) {return gridrouter.verts[d.source].y})
-                .attr('x2',function(d) {return gridrouter.verts[d.target].x})
-                .attr('y2',function(d) {return gridrouter.verts[d.target].y})
-                .style('stroke', 'black')
-                .style('stroke-width','1')
-            svg.selectAll('.obstacles')
-                .data(gridrouter.obstacles)
-                .enter()
-                .append('rect')
-                .attr('x', function(d) { return d.rect.x })
-                .attr('y', function(d) { return d.rect.y })
-                .attr('width',function(d){return d.rect.width()})
-                .attr('height',function(d){return d.rect.height()})
-                .style('stroke', 'black')
-                .style('stroke-width', '3')
-                .style('fill', 'none');
-            svg.selectAll('.sourcetarget')
-                .data([gridrouter.nodes[source],gridrouter.nodes[target]])
-                .enter()
-                .append('rect')
-                .attr('x', function(d) { return d.rect.x })
-                .attr('y', function(d) { return d.rect.y })
-                .attr('width',function(d){return d.rect.width()})
-                .attr('height',function(d){return d.rect.height()})
-                .style('stroke', 'red')
-                .style('stroke-width', '1')
-                .style('fill', 'none');
-
-            var lineFunction = d3.svg.line()
-                .x(function (d) { return d.x; })
-                .y(function (d) { return d.y; }).interpolate('linear');
-            svg.selectAll('.route')
-                .data([shortestPath])
-                .enter().append('path')
-                .attr('class', 'route').attr('opacity', 0.5)
-                .attr('d', function (d) { return lineFunction(d) })
-                .attr('fill', 'none')
-                .style('stroke', 'red')
-                .style('stroke-width', 5);
-        }
         start();
     });
     ok(true);
@@ -692,7 +510,6 @@ test("shortest path with bends", function() {
 });
 
 test("tangent visibility graph", function () {
-    var draw = false;
     for (var tt = 0; tt < 100; tt++) {
         var rand = new cola.PseudoRandom(tt),
             nextInt = function (r) { return Math.round(rand.getNext() * r) },
@@ -707,29 +524,11 @@ test("tangent visibility graph", function () {
         var getSource = function (e) { return e.source.id }, getTarget = function(e) { return e.target.id}, getLength = function(e) { return e.length() }
         shortestPath = (new cola.shortestpaths.Calculator(g.V.length, g.E, getSource, getTarget, getLength)).PathFromNodeToNode(start.id, end.id);
         ok(shortestPath.length > 0);
-        if (draw) {
-            d3.select("body").append("p").html(tt);
-            var svg = d3.select("body").append("svg").attr("width", 800).attr("height", 250);
-            P.forEach(function (p, i) { drawPoly(svg, p /*, i*/) });
-
-            // draw visibility graph:
-            //g.E.forEach(function (e) {
-            //    drawLine(svg, { x1: e.source.p.x, y1: e.source.p.y, x2: e.target.p.x, y2: e.target.p.y });
-            //});
-            for (var i = 0; i < shortestPath.length; i++) {
-                var u = i === 0 ? end : g.V[shortestPath[i - 1]];
-                var v = g.V[shortestPath[i]];
-                drawLine(svg, { x1: u.p.x, y1: u.p.y, x2: v.p.x, y2: v.p.y }, "orange");
-            }
-            drawCircle(svg, port1);
-            drawCircle(svg, port2);
-        }
     }
     ok(true);
 });
 
 test("tangents", function () {
-    var draw = false;
     var rand = new cola.PseudoRandom();
     var rect = [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 10, y: 20 }, { x: 20, y: 20 }];
     var pnt = [{ x: 0, y: 0 }];
@@ -740,21 +539,6 @@ test("tangents", function () {
         //if (j !== 207) continue;
         var t = cola.geom.tangents(A, B);
         // ok(t.length === 4, t.length + " tangents found at j="+j);
-        if (draw) {
-            var getLine = function (tp) {
-                return { x1: A[tp.t1].x, y1: A[tp.t1].y, x2: B[tp.t2].x, y2: B[tp.t2].y };
-            }
-            d3.select("body").append("p").html(j);
-            var svg = d3.select("body").append("svg").attr({ width: 800, height: 100 });
-            drawPoly(svg, A);
-            drawPoly(svg, B);
-            for (var p in t) {
-                var l = getLine(t[p]);
-                drawLine(svg, l);
-                var ints = intersects(l, A).concat(intersects(l, B));
-                ok (ints.length <= 4, ints.length + " intersects found at "+j);
-            }
-        }
     }
     ok(true);
 });
@@ -1048,19 +832,9 @@ test("cola.vpsc.removeOverlaps", function () {
 });
 
 test("packing", function () {
-    var draw = false;
     var nodes = []
-    var drawNodes = function () {
-        if (draw) {
-            var svg  = d3.select("body").append("svg").attr("width", 200).attr("height", 200);
-            nodes.forEach(function (v) {
-                svg.append("rect").attr("x", 100 + v.x - v.width / 2).attr("y", 100 + v.y - v.height / 2).attr("width", v.width).attr("height", v.height).style("fill", "#6600FF").style("fill-opacity", 0.5);
-            });
-        }
-    }
     for (var i = 0; i < 9; i++) { nodes.push({width: 10, height: 10}) }
     cola.d3adaptor().nodes(nodes).start();
-    drawNodes();
     var check = function (aspectRatioThreshold) {
         var dim = nodes.reduce(function (p, v) {
             return {
@@ -1078,13 +852,12 @@ test("packing", function () {
     // regression test, used to cause infinite loop
     nodes = [{ width: 24, height: 35 }, { width: 24, height: 35 }, { width: 32, height: 35 }];
     cola.d3adaptor().nodes(nodes).start();
-    drawNodes();
     check(0.3);
 
     // for some reason the first rectangle is offset by the following - no assertion for this yet.
     var rand = new cola.PseudoRandom(51);
     for (var i = 0; i < 19; i++) { nodes.push({ width: rand.getNextBetween(5, 30), height: rand.getNextBetween(5, 30) }) }
     cola.d3adaptor().nodes(nodes).avoidOverlaps(false).start();
-    drawNodes();
     check(0.1);
-});
+}
+}
