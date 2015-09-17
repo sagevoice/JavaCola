@@ -1,17 +1,29 @@
 ﻿package edu.monash.infotech.marvl.cola;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.MapType;
 import edu.monash.infotech.marvl.cola.geom.Geom;
 import edu.monash.infotech.marvl.cola.geom.Point;
 import edu.monash.infotech.marvl.cola.geom.TangentVisibilityGraph;
 import edu.monash.infotech.marvl.cola.powergraph.Configuration;
+import edu.monash.infotech.marvl.cola.powergraph.LinkTypeAccessor;
+import edu.monash.infotech.marvl.cola.powergraph.Module;
+import edu.monash.infotech.marvl.cola.powergraph.PowerEdge;
 import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
 import edu.monash.infotech.marvl.cola.vpsc.*;
 
+import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+@Slf4j
 public class Tests {
      private double nodeDistance(final GraphNode u, final GraphNode v) {
         final double dx = u.x - v.x, dy = u.y - v.y;
@@ -22,22 +34,30 @@ public class Tests {
         return Math.abs(actual - expected) <= threshold;
     }
 
+    private List<Link> mapJsonArrayToList(final List<Map<String, Object>> jsonArray) {
+        final List<Link> result = jsonArray.stream().map(jsonObj -> {
+            return new Link(jsonObj.get("source"), jsonObj.get("target"));
+        }).collect(Collectors.toList());
+        return result;
+    }
+
     @Test(description="small power-graph")
     public void smallPowerGraphTest () {
-        d3.json("../examples/graphdata/n7e23.json", function (error, graph) {
-            var n = graph.nodes.length;
-            Assert.assertTrue(n == 7);
-            var linkAccessor = {
-                getSourceIndex: function (e) { return e.source },
-                getTargetIndex: function (e) { return e.target },
-                getType: function(e) { return 0 },
-                makeLink: function (u, v) { return { source: u, target: v } }
-            };
-            Configuration c = new Configuration(n, graph.links, linkAccessor);
-            Assert.assertTrue(c.modules.length == 7);
-            var es;
-            Assert.assertTrue(c.R == (es = c.allEdges()).length, "c.R=" + c.R + ", actual edges in c=" + es.length);
-            var m = c.merge(c.modules[0], c.modules[4]);
+        try (final InputStream stream = getClass().getResourceAsStream("/n7e23.json")) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final MapType type = mapper.getTypeFactory().constructMapType(
+                Map.class, String.class, Object.class);
+            final Map<String, Object> graph = mapper.readValue(stream, type);
+
+            final int n = ((List)graph.get("nodes")).size();
+            Assert.assertEquals(n, 7);
+            List<Link> links = mapJsonArrayToList((List<Map<String, Object>>)graph.get("links"));
+            LinkTypeAccessor<Link> linkAccessor = new IntegerLinkAccessor();
+            Configuration<Link> c = new Configuration<>(n, links, linkAccessor);
+            Assert.assertEquals(c.modules.size(), 7);
+            List<PowerEdge> es = c.allEdges();
+            Assert.assertEquals(c.R, es.size(), "c.R=" + c.R + ", actual edges in c=" + es.size());
+            Module m = c.merge(c.modules.get(0), c.modules.get(4));
             Assert.assertTrue(m.children.contains(0));
             Assert.assertTrue(m.children.contains(4));
             Assert.assertTrue(m.outgoing.contains(1));
@@ -46,26 +66,30 @@ public class Tests {
             Assert.assertTrue(m.outgoing.contains(6));
             Assert.assertTrue(m.incoming.contains(2));
             Assert.assertTrue(m.incoming.contains(5));
-            Assert.assertTrue(c.R == (es = c.allEdges()).length, "c.R=" + c.R + ", actual edges in c=" + es.length);
-            m = c.merge(c.modules[2], c.modules[3]);
-            Assert.assertTrue(c.R == (es = c.allEdges()).length, "c.R=" + c.R + ", actual edges in c=" + es.length);
+            es = c.allEdges();
+            Assert.assertEquals(c.R, es.size(), "c.R=" + c.R + ", actual edges in c=" + es.size());
+            m = c.merge(c.modules.get(2), c.modules.get(3));
+            es = c.allEdges();
+            Assert.assertEquals(c.R, es.size(), "c.R=" + c.R + ", actual edges in c=" + es.size());
 
-            c = new Configuration(n, graph.links, linkAccessor);
-            var lastR = c.R;
+            c = new Configuration<>(n, links, linkAccessor);
+            int lastR = c.R;
             while (c.greedyMerge()) {
                 Assert.assertTrue(c.R < lastR);
                 lastR = c.R;
             }
-            var finalEdges = [];
-            var powerEdges = c.allEdges();
-            Assert.assertTrue(powerEdges.length == 7);
-            var groups = c.getGroupHierarchy(finalEdges);
-            Assert.assertTrue(groups.length == 4);
-            start();
-        });
+            List<PowerEdge> finalEdges = new ArrayList<>();
+            List<PowerEdge> powerEdges = c.allEdges();
+            Assert.assertEquals(powerEdges.size(), 7);
+            List<Group> groups = c.getGroupHierarchy(finalEdges);
+            Assert.assertEquals(groups.size(), 4);
+        } catch (IOException e) {
+            log.error("IOException in smallPowerGraphTest", e);
+            throw new RuntimeException(e);
+        }
         Assert.assertTrue(true);
     }
-
+ /*
     @Test(description="all-pairs shortest paths")
     public void allPairsShortestPathsTest() {
         LayoutAdaptor d3cola = CoLa.adaptor();
@@ -896,4 +920,5 @@ public class Tests {
         CoLa.adaptor().nodes(nodes).avoidOverlaps(false).start();
         check(0.1);
     }
+    */
 }
