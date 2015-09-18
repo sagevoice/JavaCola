@@ -19,7 +19,7 @@ public class PseudoRandom {
     // random real between 0 and 1
     public double getNext() {
         seed = (seed * a + c) % m;
-        return (seed >> 16) / range;
+        return (double)(seed >> 16) / (double)range;
     }
 
     // random real between min and max

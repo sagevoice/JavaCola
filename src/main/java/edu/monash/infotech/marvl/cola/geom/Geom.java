@@ -2,10 +2,12 @@ package edu.monash.infotech.marvl.cola.geom;
 
 import edu.monash.infotech.marvl.cola.vpsc.Rectangle;
 import edu.monash.infotech.marvl.cola.TriFunction;
+import edu.monash.infotech.marvl.cola.vpsc.ValueHolder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -36,9 +38,9 @@ public class Geom {
      * @param S array of points
      * @return the convex hull as an array of points
      */
-    public static List<Point> ConvexHull(Point[] S) {
-        Point[] P = Arrays.stream(S.clone()).sorted((a, b) -> a.x != b.x ? (int)(b.x - a.x) : (int)(b.y - a.y)).toArray(Point[]::new);
-        int n = S.length, i;
+    public static List<Point> ConvexHull(List<Point> S) {
+        Point[] P = S.stream().sorted((a, b) -> a.x != b.x ? (int)Math.signum(b.x - a.x) : (int)Math.signum(b.y - a.y)).toArray(Point[]::new);
+        int n = S.size(), i;
         int minmin = 0;
         double xmin = P[0].x;
         for (i = 1; i < n; ++i) {
@@ -117,10 +119,10 @@ public class Geom {
     }
 
     // apply f to the points in P in clockwise order around the point p
-    public static void clockwiseRadialSweep(final Point p, final Point[] P, final Consumer<Point> f) {
-        Arrays.stream(P.clone()).sorted(
-                (a, b) -> (int)(Math.atan2(a.y - p.y, a.x - p.x) - Math.atan2(b.y - p.y, b.x - p.x))
-        ).forEach((a) -> f.accept(a));
+    public static void clockwiseRadialSweep(final Point p, final List<Point> P, final BiConsumer<Point, ValueHolder> f, final ValueHolder value) {
+        P.stream().sorted(
+                (a, b) -> (int)Math.signum(Math.atan2(a.y - p.y, a.x - p.x) - Math.atan2(b.y - p.y, b.x - p.x))
+        ).forEach((a) -> f.accept(a, value));
     }
 
     public static PolyPoint nextPolyPoint(PolyPoint p, PolyPoint[] ps) {

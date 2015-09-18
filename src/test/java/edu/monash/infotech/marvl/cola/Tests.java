@@ -2,6 +2,8 @@ package edu.monash.infotech.marvl.cola;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
+import edu.monash.infotech.marvl.cola.geom.Geom;
+import edu.monash.infotech.marvl.cola.geom.Point;
 import edu.monash.infotech.marvl.cola.powergraph.Configuration;
 import edu.monash.infotech.marvl.cola.powergraph.LinkTypeAccessor;
 import edu.monash.infotech.marvl.cola.powergraph.Module;
@@ -16,9 +18,9 @@ import org.testng.annotations.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
@@ -26,7 +28,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class Tests {
-     private double nodeDistance(final GraphNode u, final GraphNode v) {
+
+    private double nodeDistance(final GraphNode u, final GraphNode v) {
         final double dx = u.x - v.x, dy = u.y - v.y;
         return Math.sqrt(dx * dx + dy * dy);
     }
@@ -49,13 +52,12 @@ public class Tests {
         return result;
     }
 
-
-    @Test(description="small power-graph")
-    public void smallPowerGraphTest () {
+    @Test(description = "small power-graph")
+    public void smallPowerGraphTest() {
         try (final InputStream stream = getClass().getResourceAsStream("/n7e23.json")) {
             final ObjectMapper mapper = new ObjectMapper();
             final MapType type = mapper.getTypeFactory().constructMapType(
-                Map.class, String.class, Object.class);
+                    Map.class, String.class, Object.class);
             final Map<String, Object> graph = mapper.readValue(stream, type);
 
             final int n = ((List)graph.get("nodes")).size();
@@ -99,58 +101,61 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-    @Test(description="all-pairs shortest paths")
+    @Test(description = "all-pairs shortest paths")
     public void allPairsShortestPathsTest() {
-        LayoutAdaptor d3cola = CoLa.adaptor();
+        final LayoutAdaptor d3cola = CoLa.adaptor();
 
         try (final InputStream stream = getClass().getResourceAsStream("/triangle.json")) {
             final ObjectMapper mapper = new ObjectMapper();
             final MapType type = mapper.getTypeFactory().constructMapType(
-                Map.class, String.class, Object.class);
+                    Map.class, String.class, Object.class);
             final Map<String, Object> graph = mapper.readValue(stream, type);
             List<Link> links = mapJsonArrayToLinkList((List<Map<String, Object>>)graph.get("links"));
             List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
 
             d3cola
-                .nodes(nodes)
-                .links(links)
-                .linkDistance(Double.valueOf(1));
+                    .nodes(nodes)
+                    .links(links)
+                    .linkDistance(Double.valueOf(1));
             final int n = d3cola.nodes().size();
             Assert.assertEquals(n, 4);
 
-
-             final ToIntFunction<Link> getSourceIndex = (e) -> {
+            final ToIntFunction<Link> getSourceIndex = (e) -> {
                 return ((Integer)e.source).intValue();
             };
             final ToIntFunction<Link> getTargetIndex = (e) -> {
                 return ((Integer)e.target).intValue();
             };
-            ToDoubleFunction<Link> getLength = (e) -> {
+            final ToDoubleFunction<Link> getLength = (e) -> {
                 return 1;
             };
-            double[][] D = (new Calculator<>(n, d3cola.links(), getSourceIndex, getTargetIndex, getLength)).DistanceMatrix();
-            Assert.assertEquals(D, new double[][]{
+            final double[][] D = (new Calculator<>(n, d3cola.links(), getSourceIndex, getTargetIndex, getLength)).DistanceMatrix();
+            Assert.assertEquals(D, new double[][] {
                     {0, 1, 1, 2},
                     {1, 0, 1, 2},
                     {1, 1, 0, 1},
                     {2, 2, 1, 0},
             });
-            double[] x = new double[]{0, 0, 1, 1}, y = new double[]{1, 0, 0, 1};
-            Descent descent = new Descent(new double[][]{x, y}, D);
-            double s0 = descent.reduceStress();
-            double s1 = descent.reduceStress();
+            final double[] x = new double[] {0, 0, 1, 1};
+            final double[] y = new double[] {1, 0, 0, 1};
+            final Descent descent = new Descent(new double[][] {x, y}, D);
+            final double s0 = descent.reduceStress();
+            final double s1 = descent.reduceStress();
             Assert.assertTrue(s1 < s0);
-            double s2 = descent.reduceStress();
+            final double s2 = descent.reduceStress();
             Assert.assertTrue(s2 < s1);
-            d3cola.start(0,0,10);
+            d3cola.start(0, 0, 10);
             final List<Double> lengths = d3cola.links().stream().map(l -> {
                 GraphNode u = (GraphNode)l.source, v = (GraphNode)l.target;
                 double dx = u.x - v.x, dy = u.y - v.y;
-                return Math.sqrt(dx*dx + dy*dy);
+                return Math.sqrt(dx * dx + dy * dy);
             }).collect(Collectors.toList());
-            Function<List<Double>, Double> avg = (a) -> { return a.stream().reduce( new Double(0), (u, v) -> { return u + v; }) / a.size(); };
+            final Function<List<Double>, Double> avg = (a) -> {
+                return a.stream().reduce(new Double(0), (u, v) -> { return u + v; }) / a.size();
+            };
             final double mean = avg.apply(lengths);
-            final double variance = avg.apply(lengths.stream().map( (l) -> { double d = mean - l; return d * d; }).collect(Collectors.toList()));
+            final double variance = avg
+                    .apply(lengths.stream().map((l) -> { double d = mean - l; return d * d; }).collect(Collectors.toList()));
             Assert.assertTrue(variance < 0.1);
         } catch (IOException e) {
             log.error("IOException in allPairsShortestPathsTest", e);
@@ -159,14 +164,14 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-    @Test(description="edge lengths")
-    public void edgeLengthsTest () {
-        LayoutAdaptor d3cola = CoLa.adaptor();
+    @Test(description = "edge lengths")
+    public void edgeLengthsTest() {
+        final LayoutAdaptor d3cola = CoLa.adaptor();
 
         try (final InputStream stream = getClass().getResourceAsStream("/triangle.json")) {
             final ObjectMapper mapper = new ObjectMapper();
             final MapType type = mapper.getTypeFactory().constructMapType(
-                Map.class, String.class, Object.class);
+                    Map.class, String.class, Object.class);
             final Map<String, Object> graph = mapper.readValue(stream, type);
             List<Link> links = mapJsonArrayToLinkList((List<Map<String, Object>>)graph.get("links"));
             List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
@@ -175,17 +180,19 @@ public class Tests {
                 return ("2-3").equals(Layout.linkId(l)) ? 2 : 1;
             };
             d3cola
-                .linkDistance(length)
-                .nodes(nodes)
-                .links(links);
+                    .linkDistance(length)
+                    .nodes(nodes)
+                    .links(links);
             d3cola.start(100);
             List<Double> errors = d3cola.links().stream().map((e) -> {
                 double l = nodeDistance((GraphNode)e.source, (GraphNode)e.target);
                 return Math.abs(l - length.applyAsDouble(e));
             }).collect(Collectors.toList());
-            Function<List<Double>, Double> listMax = (a) -> { return a.stream().reduce( new Double(0), (u, v) -> { return Math.max(u, v); }); };
+            final Function<List<Double>, Double> listMax = (a) -> {
+                return a.stream().reduce(new Double(0), (u, v) -> { return Math.max(u, v); });
+            };
             double max = listMax.apply(errors);
-            Assert.assertTrue(max < 0.1, "max = " + max);
+            Assert.assertTrue(0.1 > max, "max = " + max);
         } catch (IOException e) {
             log.error("IOException in edgeLengthsTest", e);
             throw new RuntimeException(e);
@@ -193,52 +200,55 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
- /*
     @Test(description="group")
     public void groupTest () {
         LayoutAdaptor d3cola = CoLa.adaptor();
 
-        var length = (l) -> {
-            return d3cola.linkId(l) == "2-3" ? 2 : 1;
-        }
-        var nodes = [];
-        var u = { x: -5, y: 0, width: 10, height: 10 };
-        var v = { x: 5, y: 0, width: 10, height: 10 };
-        var g = { padding: 10, leaves: [0] };
+        final ToDoubleFunction<Link> length = (l) -> {
+            return ("2-3").equals(d3cola.linkId(l)) ? 2 : 1;
+        };
+        final List<GraphNode> nodes = new ArrayList<>();
+        final GraphNode u = new GraphNode(-5, 0, 10, 10);
+        final GraphNode v = new GraphNode(5, 0, 10, 10);
+        final Group g = new Group(10, Arrays.asList(new GraphNode(0)));
 
         d3cola
             .linkDistance(length)
             .avoidOverlaps(true)
-            .nodes([u,v])
-            .groups([g]);
+            .nodes(Arrays.asList(u,v))
+            .groups(Arrays.asList(g));
         d3cola.start(10, 10, 10);
 
-        Assert.assertTrue(approxEquals(g.bounds.width(), 30, 0.1));
-        Assert.assertTrue(approxEquals(g.bounds.height(), 30, 0.1));
+        Assert.assertEquals(g.bounds.width(), 30, 0.1);
+        Assert.assertEquals(g.bounds.height(), 30, 0.1);
 
-        Assert.assertTrue(approxEquals(Math.abs(u.y - v.y), 20, 0.1));
+        Assert.assertEquals(Math.abs(u.y - v.y), 20, 0.1);
     }
 
     @Test(description="equality constraints")
     public void equalityConstraintsTest() {
         LayoutAdaptor d3cola = CoLa.adaptor();
 
-        d3.json("../examples/graphdata/triangle.json", function (error, graph) {
+        try (final InputStream stream = getClass().getResourceAsStream("/triangle.json")) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final MapType type = mapper.getTypeFactory().constructMapType(
+                    Map.class, String.class, Object.class);
+            final Map<String, Object> graph = mapper.readValue(stream, type);
+            List<Link> links = mapJsonArrayToLinkList((List<Map<String, Object>>)graph.get("links"));
+            List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
+
             d3cola
-                .nodes(graph.nodes)
-                .links(graph.links)
-                .constraints([{
-                    type: "separation", axis: "x",
-                    left: 0, right: 1, gap: 0, equality: true
-                }, {
-                    type: "separation", axis: "y",
-                    left: 0, right: 2, gap: 0, equality: true
-                }]);
+                .nodes(nodes)
+                .links(links)
+                .constraints(Arrays.asList(new Constraint("separation", "x", 0, 1, 0, true),
+                                           new Constraint("separation", "y", 0, 2, 0, true)));
             d3cola.start(20, 20, 20);
-            Assert.assertTrue(Math.abs(graph.nodes[0].x - graph.nodes[1].x) < 0.001);
-            Assert.assertTrue(Math.abs(graph.nodes[0].y - graph.nodes[2].y) < 0.001);
-            start();
-        });
+            Assert.assertTrue(0.001 > Math.abs(nodes.get(0).x - nodes.get(1).x));
+            Assert.assertTrue(0.001 > Math.abs(nodes.get(0).y - nodes.get(2).y));
+        } catch (IOException e) {
+            log.error("IOException in equalityConstraintsTest", e);
+            throw new RuntimeException(e);
+        }
         Assert.assertTrue(true);
     }
 
@@ -248,52 +258,54 @@ public class Tests {
 
     @Test(description="convex hulls")
     public void convexHullsTest() {
-        PseudoRandom rand = new PseudoRandom();
-        var width = 100, height = 100;
+        final PseudoRandom rand = new PseudoRandom();
+        final int width = 100, height = 100;
 
-        for (var k = 0; k < 10; ++k) {
-            var P = [];
-            for (var i = 0; i < 5; ++i) {
-                var p;
-                P.push(p = { x: nextInt(width), y: nextInt(height) });
+        for (int k = 0; 10 > k; ++k) {
+            List<Point> P = new ArrayList<>(5);
+            for (int i = 0; 5 > i; ++i) {
+                final Point p = new Point(nextInt(rand, width), nextInt(rand, height));
+                P.add(p);
             }
-            var h = Geom.ConvexHull(P);
+            List<Point> h = Geom.ConvexHull(P);
 
-            for (var i = 2; i < h.length; ++i) {
-                var p = h[i - 2], q = h[i - 1], r = h[i];
-                Assert.assertTrue(Geom.isLeft(p, q, r) >= 0, "clockwise hull " + i);
-                for (var j = 0; j < P.length; ++j) {
-                    Assert.assertTrue(Geom.isLeft(p, q, P[j]) >= 0, "" + j);
+            for (int i = 2; i < h.size(); ++i) {
+                final Point p = h.get(i - 2), q = h.get(i - 1), r = h.get(i);
+                Assert.assertTrue(0 <= Geom.isLeft(p, q, r), "clockwise hull " + i);
+                for (int j = 0; j < P.size(); ++j) {
+                    Assert.assertTrue(0 <= Geom.isLeft(p, q, P.get(j)), "" + j);
                 }
             }
-            Assert.assertTrue(h[0] != = h[h.length - 1], "first and last point of hull are different" + k);
+            Assert.assertNotEquals(h.get(0), h.get(h.size() - 1), "first and last point of hull are different " + k);
         }
     }
 
     @Test(description="radial sort")
     public void radialSortTest() {
-        var n = 100;
-        var width = 400, height = 400;
-        var P = [];
-        var x = 0, y = 0;
+        final int n = 100;
+        final int width = 400, height = 400;
+        List<Point> P = new ArrayList<>(n);
+        double x = 0, y = 0;
         PseudoRandom rand = new PseudoRandom(5);
-        for (var i = 0; i < n; ++i) {
-            var p;
-            P.push(p = { x: nextInt(width), y: nextInt(height) });
+        for (int i = 0; i < n; ++i) {
+            final Point p = new Point(nextInt(rand, width), nextInt(rand, height));
+            P.add(p);
             x += p.x; y += p.y;
         }
-        var q = { x: x / n, y: y / n };
+        final Point q = new Point(x / n, y / n);
         //console.log(q);
-        var p0 = null;
-        Geom.clockwiseRadialSweep(q, P, (p, i) -> {
-            if (p0) {
-                var il = Geom.isLeft(q, p0, p);
-                Assert.assertTrue(il >= 0);
+        ValueHolder<Point> valueHolder = new ValueHolder<>(null);
+        Geom.clockwiseRadialSweep(q, P, (p, value) -> {
+            final ValueHolder<Point> p0 = value;
+            if (null != p0.get()) {
+                double il = Geom.isLeft(q, p0.get(), p);
+                Assert.assertTrue(0 <= il);
             }
-            p0 = p;
-        });
+            p0.set(p);
+        }, valueHolder);
     }
 
+  /*
     private double length(final Point p, final Point q) {
         final double dx = p.x - q.x, dy = p.y - q.y;
         return dx * dx + dy * dy;

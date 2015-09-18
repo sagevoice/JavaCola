@@ -12,12 +12,13 @@ public class Blocks {
     public Blocks(final List<Variable> vs) {
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.vs = vs;
-        int n = vs.size();
-        this.list = new ArrayList<>(n);
-        while (0 < n--) {
-            final Block b = new Block(vs.get(n));
-            this.list.set(n, b);
-            b.blockInd = n;
+        int i = 0;
+        this.list = new ArrayList<>(vs.size());
+        for (final Variable v : vs) {
+            final Block b = new Block(v);
+            this.list.add(b);
+            b.blockInd = i;
+            i++;
         }
     }
 

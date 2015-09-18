@@ -54,7 +54,7 @@ public class HandleDisconnected {
         double curr_best = 0;
         data.sort((a, b) -> {
             //noinspection NumericCastThatLosesPrecision
-            return (int)(b.height - a.height);
+            return (int)Math.signum(b.height - a.height);
         });
 
         Graph minGraph = new Graph();

@@ -42,7 +42,7 @@ public class GridRouter<T> {
         this.nodes = new ArrayList<>(originalnodes.size());
         for (int i = 0; i < originalnodes.size(); i++) {
             final T v = originalnodes.get(i);
-            this.nodes.set(i, new NodeWrapper(i, accessor.getBounds(v), accessor.getChildren(v)));
+            this.nodes.add(new NodeWrapper(i, accessor.getBounds(v), accessor.getChildren(v)));
         }
         this.leaves = this.nodes.stream().filter(v -> v.leaf).collect(Collectors.toList());
         this.groups = this.nodes.stream().filter(g -> !g.leaf).collect(Collectors.toList());
@@ -80,7 +80,7 @@ public class GridRouter<T> {
         // such that each can be made large enough to enclose its interior
         List<NodeWrapper> list = new ArrayList<>(this.backToFront);
         Collections.reverse(list);
-        Stream<NodeWrapper> frontToBackGroups = list.stream().filter(g -> !g.leaf);
+        final Stream<NodeWrapper> frontToBackGroups = list.stream().filter(g -> !g.leaf);
         frontToBackGroups.forEach(v -> {
             Rectangle r = Rectangle.empty();
             for (int i = 0, n = v.children.size(); i < n; i++) {
@@ -151,7 +151,7 @@ public class GridRouter<T> {
 
             // split lines into edges joining vertices
             boolean isHoriz = 0.1 > Math.abs(l.y1 - l.y2);
-            Comparator<Vert> delta = (a, b) -> isHoriz ? (int)(b.x - a.x) : (int)(b.y - a.y);
+            Comparator<Vert> delta = (a, b) -> isHoriz ? (int)Math.signum(b.x - a.x) : (int)Math.signum(b.y - a.y);
             l.verts.sort(delta);
             for (int i = 1; i < l.verts.size(); i++) {
                 Vert u = l.verts.get(i - 1), v = l.verts.get(i);
@@ -196,7 +196,7 @@ public class GridRouter<T> {
             }
         }
         //noinspection NumericCastThatLosesPrecision
-        columns.sort((a, b) -> (int)(a.pos - b.pos));
+        columns.sort((a, b) -> (int)Math.signum(a.pos - b.pos));
         return columns;
     }
 
@@ -283,7 +283,7 @@ public class GridRouter<T> {
                 }
             }
         }
-        vsegments.sort((a, b) -> (int)(a.get(0).get(x) - b.get(0).get(x)));
+        vsegments.sort((a, b) -> (int)Math.signum(a.get(0).get(x) - b.get(0).get(x)));
 
         // vsegmentsets is a set of sets of segments grouped by x position
         final List<SegmentSet> vsegmentsets = new ArrayList<>();
@@ -389,7 +389,7 @@ public class GridRouter<T> {
                 events.add(new GridEvent(0, s, Math.min(s.get(0).get(y), s.get(1).get(y))));
                 events.add(new GridEvent(1, s, Math.max(s.get(0).get(y), s.get(1).get(y))));
             }
-            events.sort((a, b) -> (int)(a.pos - b.pos) + a.type - b.type);
+            events.sort((a, b) -> (int)Math.signum(a.pos - b.pos) + a.type - b.type);
             List<Segment> open = new ArrayList<>();
             int openCount = 0;
             for (int k = 0; k < events.size(); k++) {

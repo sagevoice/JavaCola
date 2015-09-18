@@ -29,6 +29,13 @@ public class GraphNode extends Point {
         this.bounds = bounds;
     }
 
+    public GraphNode(final double x, final double y, final double width, final double height) {
+        super(x, y);
+        this.width = width;
+        this.height = height;
+    }
+
+
 
     @Override
     public double get(final String key) {

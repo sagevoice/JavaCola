@@ -35,6 +35,15 @@ public class Constraint {
         this.equality = equality;
     }
 
+    public Constraint(final String type, final String axis, final int leftIndex, final int rightIndex, final double gap, final boolean equality) {
+        this.type = type;
+        this.axis = axis;
+        this.leftIndex = leftIndex;
+        this.rightIndex = rightIndex;
+        this.gap = gap;
+        this.equality = equality;
+    }
+
     public double slack() {
         return this.unsatisfiable ? Double.MAX_VALUE
                                   : this.right.scale * this.right.position() - this.gap

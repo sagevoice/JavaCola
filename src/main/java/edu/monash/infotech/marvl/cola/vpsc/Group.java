@@ -29,4 +29,10 @@ public class Group {
         this.leaves = leaves;
         this.groups = groups;
     }
+
+    public Group(final double padding, final List<GraphNode> leaves) {
+        this.padding = padding;
+        this.leaves = leaves;
+    }
+
 }

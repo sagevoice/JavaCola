@@ -74,9 +74,9 @@ public class Projection {
                 final Group g = groups.get(j);
 
                 g.minVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
-                this.variables.set(i, g.minVar);
+                this.variables.add(g.minVar);
                 g.maxVar = new IndexedVariable(i++, 0 < g.stiffness ? g.stiffness : 0.01);
-                this.variables.set(i, g.maxVar);
+                this.variables.add(g.maxVar);
             }
         }
     }
@@ -101,7 +101,7 @@ public class Projection {
             axis = "x";
             dim = "width";
         }
-        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes.get(o.node)).sorted((a, b) -> (int)(a.get(axis) - b.get(axis)))
+        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes.get(o.node)).sorted((a, b) -> (int)Math.signum(a.get(axis) - b.get(axis)))
                                 .collect(Collectors.toList()).toArray(new GraphNode[c.offsets.size()]);
         GraphNode p = null;
         for (int i = 0; i < vs.length; i++) {

@@ -69,7 +69,7 @@ public class VPSC {
         if (a.pos < b.pos) {
             return -1;
         }
-        if (a.isOpen) {
+        if (a.isOpen && !b.isOpen) {
             // open must come before close
             return -1;
         }
