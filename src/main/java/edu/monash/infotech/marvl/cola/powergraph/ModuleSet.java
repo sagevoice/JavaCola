@@ -52,7 +52,7 @@ public class ModuleSet {
         this.table.remove(m.id);
     }
 
-    public void forAll(BiConsumer<Module, ValueHolder> f, ValueHolder value) {
+    public void forAll(final BiConsumer<Module, ValueHolder> f, final ValueHolder value) {
         for (final Integer mid : this.table.keySet()) {
             f.accept(this.table.get(mid), value);
         }

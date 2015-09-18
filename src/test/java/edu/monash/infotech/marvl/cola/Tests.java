@@ -172,7 +172,7 @@ public class Tests {
             List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
 
             final ToDoubleFunction<Link> length = (l) -> {
-                return Layout.linkId(l) == "2-3" ? 2 : 1;
+                return ("2-3").equals(Layout.linkId(l)) ? 2 : 1;
             };
             d3cola
                 .linkDistance(length)

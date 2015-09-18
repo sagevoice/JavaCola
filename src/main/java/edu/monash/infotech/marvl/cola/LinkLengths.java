@@ -129,7 +129,7 @@ public class LinkLengths {
      */
     public static <T> List<List<Integer>> stronglyConnectedComponents(final int numVertices, final List<T> edges, final LinkAccessor<T> la) {
         final List<Node> nodes = new ArrayList<>();
-        ValueHolder<Integer> valueHolder = new ValueHolder<>(0);
+        final ValueHolder<Integer> valueHolder = new ValueHolder<>(0);
         final List<Node> stack = new ArrayList<>();
         final List<List<Integer>> components = new ArrayList<>();
         final TriConsumer<Node, ValueHolder<Integer>, TriConsumer> strongConnect = (v, index, callback) -> {
