@@ -1,4 +1,4 @@
-﻿package edu.monash.infotech.marvl.cola;
+package edu.monash.infotech.marvl.cola;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;

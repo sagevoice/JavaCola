@@ -1,4 +1,4 @@
-﻿var vpsctestcases = [{
+var vpsctestcases = [{
     description: "no splits",
     variables: [
         { desiredPosition: 2 },
