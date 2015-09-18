@@ -1,5 +1,6 @@
 package edu.monash.infotech.marvl.cola;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import edu.monash.infotech.marvl.cola.geom.Geom;
@@ -18,10 +19,7 @@ import org.testng.annotations.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.ToDoubleFunction;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -358,11 +356,12 @@ public class Tests {
         List<Point> minPoly = new ArrayList<>();
         minPoly.add(new Point(Double.MAX_VALUE, Double.MAX_VALUE));
         minPoly = P.stream().reduce(minPoly, (poly0, poly1) -> {
-            final Point minPt1 = poly1.stream().reduce(new Point(Double.valueOf(Double.MAX_VALUE), Double.valueOf(Double.MAX_VALUE)), (pt0, pt1) -> {
-                pt0.x = Math.min(pt0.x, pt1.x);
-                pt0.y = Math.min(pt0.y, pt1.y);
-                return pt0;
-            });
+            final Point minPt1 = poly1.stream()
+                                      .reduce(new Point(Double.valueOf(Double.MAX_VALUE), Double.valueOf(Double.MAX_VALUE)), (pt0, pt1) -> {
+                                          pt0.x = Math.min(pt0.x, pt1.x);
+                                          pt0.y = Math.min(pt0.y, pt1.y);
+                                          return pt0;
+                                      });
             final Point minPt0 = poly0.get(0);
             minPt0.x = Math.min(minPt0.x, minPt1.x);
             minPt0.y = Math.min(minPt0.y, minPt1.y);
@@ -477,7 +476,8 @@ public class Tests {
         final VoidConsumer nudge = () -> {
             order.set(GridRouter.orderEdges(edges));
             routes.clear();
-            final List<List<Segment>> newRoutes = edges.stream().map((e) -> { return GridRouter.makeSegments(e); }).collect(Collectors.toList());
+            final List<List<Segment>> newRoutes = edges.stream().map((e) -> { return GridRouter.makeSegments(e); })
+                                                       .collect(Collectors.toList());
             routes.addAll(newRoutes);
             GridRouter.nudgeSegments(routes, "x", "y", order.get(), 2);
             GridRouter.nudgeSegments(routes, "y", "x", order.get(), 2);
@@ -543,61 +543,128 @@ public class Tests {
         Assert.assertEquals(countRouteIntersections(routes), 0);
     }
 
-  /*
+    public class TetrisBounds {
+
+        private double x;
+        private double X;
+        private double y;
+        private double Y;
+    }
+
+
+    public class TetrisNode {
+
+        public int           id;
+        public String        name;
+        public TetrisBounds  bounds;
+        public List<Integer> children;
+    }
+
+
+    public class TetrisEdge {
+
+        public int source;
+        public int target;
+    }
+
+
+    public class TetrisGraph {
+
+        public List<TetrisNode> nodes;
+        public List<TetrisEdge> edges;
+    }
+
+
+    public class TetrisNodeAccessor implements NodeAccessor<TetrisNode> {
+
+        @Override
+        public List<Integer> getChildren(final TetrisNode v) {
+            return v.children;
+        }
+
+        @Override
+        public Rectangle getBounds(final TetrisNode v) {
+            return null != v.bounds
+                   ? new Rectangle(v.bounds.x, v.bounds.X, v.bounds.y, v.bounds.Y)
+                   : null;
+        }
+    }
+
     // next steps:
     //  o label node and group centre and boundary vertices
     //  - non-traversable regions (obstacles) are determined by finding the highest common ancestors of the source and target nodes
     //  - to route each edge the weights of the edges are adjusted such that those inside obstacles
     //    have infinite weight while those inside the source and target node have zero weight
     //  - augment dijkstra with a cost for bends
-    @Test(description="grid router")
+    @Test(description = "grid router")
     public void gridRouterTest() {
-        d3.json("../examples/graphdata/tetrisbugmultiedgeslayout.json", function (error, graph) {
-            var gridrouter = new GridRouter(graph.nodes,{
-                getChildren: function(v) {
-                    return v.children;
-                },
-                getBounds: function(v) {
-                    return typeof v.bounds !== 'undefined'
-                        ? new Rectangle(v.bounds.x, v.bounds.X, v.bounds.y, v.bounds.Y)
-                        : undefined;
+
+        try (final InputStream stream = getClass().getResourceAsStream("/tetrisbugmultiedgeslayout.json")) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final JsonNode graph = mapper.readTree(stream);
+            final JsonNode jsonNodes = graph.get("nodes");
+            final List<TetrisNode> nodes = new ArrayList<>(jsonNodes.size());
+            for (final JsonNode jsonNode : jsonNodes) {
+                final TetrisNode tetrisNode = new TetrisNode();
+                tetrisNode.id = jsonNode.path("id").intValue();
+                tetrisNode.name = jsonNode.path("name").textValue();
+                tetrisNode.bounds = new TetrisBounds();
+                tetrisNode.bounds.x = jsonNode.path("bounds").path("x").doubleValue();
+                tetrisNode.bounds.X = jsonNode.path("bounds").path("X").doubleValue();
+                tetrisNode.bounds.y = jsonNode.path("bounds").path("y").doubleValue();
+                tetrisNode.bounds.Y = jsonNode.path("bounds").path("Y").doubleValue();
+                tetrisNode.children = new ArrayList<>();
+                final JsonNode children = jsonNode.get("children");
+                if (null != children) {
+                    for (final JsonNode child : children) {
+                        tetrisNode.children.add(child.intValue());
+                    }
                 }
-            });
-            var source = 1, target = 2;
-            var shortestPath = gridrouter.route(source, target);
-            function check(expected) {
-                Assert.assertTrue(gridrouter.obstacles.length == expected);
-                Assert.assertTrue(gridrouter.obstacles.map((v) -> { return v.id }).indexOf(source) < 0);
-                Assert.assertTrue(gridrouter.obstacles.map((v) -> { return v.id }).indexOf(target) < 0);
+
+                nodes.add(tetrisNode);
             }
-            check(8);
 
-            source = 0, target = 7;
-            shortestPath = gridrouter.route(source, target);
-            check(6);
+            final GridRouter<TetrisNode> gridrouter = new GridRouter<>(nodes, new TetrisNodeAccessor());
+            final TriConsumer<Integer, Integer, Integer> check = (expected, source, target) -> {
+                Assert.assertEquals(gridrouter.obstacles.size(), expected.intValue());
+                final List<Integer> obstacleIds = gridrouter.obstacles.stream().map((v) -> { return Integer.valueOf(v.id); })
+                                                            .collect(Collectors.toList());
+                Assert.assertTrue(0 > obstacleIds.indexOf(source));
+                Assert.assertTrue(0 > obstacleIds.indexOf(target));
+            };
 
-            source = 4, target = 5;
-            shortestPath = gridrouter.route(source, target);
-            check(8);
+            int source = 1, target = 2;
+            GridPath<Vert> shortestPath = gridrouter.route(source, target);
+            check.accept(8, source, target);
 
-            source = 11, target = 2;
+            source = 0; target = 7;
             shortestPath = gridrouter.route(source, target);
-            check(13);
+            check.accept(6, source, target);
+
+            source = 4; target = 5;
+            shortestPath = gridrouter.route(source, target);
+            check.accept(8, source, target);
+
+            source = 11; target = 2;
+            shortestPath = gridrouter.route(source, target);
+            check.accept(13, source, target);
 
             // group to node
-            source = 16, target = 5;
+            source = 16; target = 5;
             shortestPath = gridrouter.route(source, target);
-            check(7);
+            check.accept(7, source, target);
 
             // bend minimal?
-            source = 1, target = 2;
+            source = 1; target = 2;
             shortestPath = gridrouter.route(source, target);
-
-            start();
-        });
+        } catch (IOException e) {
+            log.error("IOException in gridRouterTest", e);
+            throw new RuntimeException(e);
+        }
         Assert.assertTrue(true);
     }
 
+  /*
     @Test(description="shortest path with bends")
     public void shortestPathWithBendsTest() {
         //  0 - 1 - 2

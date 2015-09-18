@@ -13,7 +13,7 @@ public class NodeWrapper {
     public Rectangle     rect;
     public List<Integer> children;
 
-    NodeWrapper(final int id, final Rectangle rect, final List<Integer> children) {
+    public NodeWrapper(final int id, final Rectangle rect, final List<Integer> children) {
         this.id = id;
         this.rect = rect;
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
