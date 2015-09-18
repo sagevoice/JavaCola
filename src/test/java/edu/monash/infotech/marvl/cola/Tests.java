@@ -664,29 +664,29 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-  /*
     @Test(description="shortest path with bends")
     public void shortestPathWithBendsTest() {
         //  0 - 1 - 2
         //      |   |
         //      3 - 4
-        var nodes = [[0,0],[1,0],[2,0],[1,1],[2,1]];
-        var edges = [[0,1,1],[1,2,2],[1,3,1],[3,4,1],[2,4,2]];
-        function source(e) { return e[0]};
-        function target(e) { return e[1]};
-        function length(e) { return e[2]};
-        Calculator sp = new Calculator(nodes.length, edges, source, target, length);
-        var path = sp.PathFromNodeToNodeWithPrevCost(0, 4,
-        function (u,v,w){
-            var a = nodes[u], b = nodes[v], c = nodes[w];
-            var dx = Math.abs(c[0] - a[0]), dy = Math.abs(c[1] - a[1]);
-            return dx > 0.01 && dy > 0.01
-                ? 1000
-                : 0;
-        });
+        final List<int[]> nodes = Arrays.asList(new int[]{0,0}, new int[]{1,0}, new int[]{2,0}, new int[]{1,1}, new int[]{2,1});
+        final List<int[]> edges = Arrays.asList(new int[]{0,1,1}, new int[]{1,2,2}, new int[]{1,3,1}, new int[]{3,4,1}, new int[]{2,4,2});
+        final ToIntFunction<int[]> source = (e) -> { return e[0];};
+        final ToIntFunction<int[]> target = (e) -> { return e[1];};
+        final ToDoubleFunction<int[]> length = (e) -> { return e[2];};
+        final TriFunction<Integer, Integer, Integer, Double> prevCost = (u,v,w) -> {
+                    final int[] a = nodes.get(u), b = nodes.get(v), c = nodes.get(w);
+                    final double dx = Math.abs(c[0] - a[0]), dy = Math.abs(c[1] - a[1]);
+                    return dx > 0.01 && dy > 0.01
+                        ? Double.valueOf(1000)
+                        : Double.valueOf(0);
+                };
+        Calculator sp = new Calculator(nodes.size(), edges, source, target, length);
+        List<Integer> path = sp.PathFromNodeToNodeWithPrevCost(0, 4, prevCost );
         Assert.assertTrue(true);
     }
 
+  /*
     @Test(description="tangent visibility graph")
     public void tangentVisibilityGraphTest() {
         for (var tt = 0; tt < 100; tt++) {
