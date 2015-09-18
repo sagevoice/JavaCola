@@ -3,9 +3,7 @@ package edu.monash.infotech.marvl.cola;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
-import edu.monash.infotech.marvl.cola.geom.Geom;
-import edu.monash.infotech.marvl.cola.geom.Point;
-import edu.monash.infotech.marvl.cola.geom.TangentVisibilityGraph;
+import edu.monash.infotech.marvl.cola.geom.*;
 import edu.monash.infotech.marvl.cola.powergraph.Configuration;
 import edu.monash.infotech.marvl.cola.powergraph.LinkTypeAccessor;
 import edu.monash.infotech.marvl.cola.powergraph.Module;
@@ -582,48 +580,52 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-    @Test(description="shortest path with bends")
+    @Test(description = "shortest path with bends")
     public void shortestPathWithBendsTest() {
         //  0 - 1 - 2
         //      |   |
         //      3 - 4
-        final List<int[]> nodes = Arrays.asList(new int[]{0,0}, new int[]{1,0}, new int[]{2,0}, new int[]{1,1}, new int[]{2,1});
-        final List<int[]> edges = Arrays.asList(new int[]{0,1,1}, new int[]{1,2,2}, new int[]{1,3,1}, new int[]{3,4,1}, new int[]{2,4,2});
+        final List<int[]> nodes = Arrays.asList(new int[] {0, 0}, new int[] {1, 0}, new int[] {2, 0}, new int[] {1, 1}, new int[] {2, 1});
+        final List<int[]> edges = Arrays
+                .asList(new int[] {0, 1, 1}, new int[] {1, 2, 2}, new int[] {1, 3, 1}, new int[] {3, 4, 1}, new int[] {2, 4, 2});
         final ToIntFunction<int[]> source = (e) -> { return e[0];};
         final ToIntFunction<int[]> target = (e) -> { return e[1];};
         final ToDoubleFunction<int[]> length = (e) -> { return e[2];};
-        final TriFunction<Integer, Integer, Integer, Double> prevCost = (u,v,w) -> {
-                    final int[] a = nodes.get(u), b = nodes.get(v), c = nodes.get(w);
-                    final double dx = Math.abs(c[0] - a[0]), dy = Math.abs(c[1] - a[1]);
-                    return dx > 0.01 && dy > 0.01
-                        ? Double.valueOf(1000)
-                        : Double.valueOf(0);
-                };
-        Calculator sp = new Calculator(nodes.size(), edges, source, target, length);
-        List<Integer> path = sp.PathFromNodeToNodeWithPrevCost(0, 4, prevCost );
+        final TriFunction<Integer, Integer, Integer, Double> prevCost = (u, v, w) -> {
+            final int[] a = nodes.get(u), b = nodes.get(v), c = nodes.get(w);
+            final double dx = Math.abs(c[0] - a[0]), dy = Math.abs(c[1] - a[1]);
+            return dx > 0.01 && dy > 0.01
+                   ? Double.valueOf(1000)
+                   : Double.valueOf(0);
+        };
+        Calculator<int[]> sp = new Calculator<>(nodes.size(), edges, source, target, length);
+        List<Integer> path = sp.PathFromNodeToNodeWithPrevCost(0, 4, prevCost);
         Assert.assertTrue(true);
     }
 
-   /*
-    @Test(description="tangent visibility graph")
+    @Test(description = "tangent visibility graph")
     public void tangentVisibilityGraphTest() {
         for (int tt = 0; tt < 100; tt++) {
-            PseudoRandom rand = new PseudoRandom(tt);
-                int n = 10;
-                List<List<Point>> P = Poly.makeNonoverlappingPolys(rand, n);
-                Point port1 = Poly.midPoint(P.get(8));
-                Point port2 = Poly.midPoint(P.get(9));
-                        TangentVisibilityGraph g = new TangentVisibilityGraph(P);
-                start = g.addPoint(port1, 8),
-                end = g.addPoint(port2, 9);
+            final PseudoRandom rand = new PseudoRandom(tt);
+            final int n = 10;
+            final List<List<TVGPoint>> P = Poly.makeNonoverlappingPolys(rand, n);
+            final TVGPoint port1 = Poly.midPoint(P.get(8));
+            final TVGPoint port2 = Poly.midPoint(P.get(9));
+            final TangentVisibilityGraph g = new TangentVisibilityGraph(P);
+            final VisibilityVertex start = g.addPoint(port1, 8);
+            final VisibilityVertex end = g.addPoint(port2, 9);
             g.addEdgeIfVisible(port1, port2, 8, 9);
-            var getSource = function (e) { return e.source.id }, getTarget = function(e) { return e.target.id}, getLength = function(e) { return e.length() }
-            shortestPath = (new Calculator(g.V.length, g.E, getSource, getTarget, getLength)).PathFromNodeToNode(start.id, end.id);
-            Assert.assertTrue(shortestPath.length > 0);
+            final ToIntFunction<VisibilityEdge> getSource = (e) -> { return e.source.id; };
+            final ToIntFunction<VisibilityEdge> getTarget = (e) -> { return e.target.id; };
+            final ToDoubleFunction<VisibilityEdge> getLength = (e) -> { return e.length(); };
+            final double[] shortestPath = (new Calculator<>(g.V.size(), g.E, getSource, getTarget, getLength))
+                    .PathFromNodeToNode(start.id, end.id);
+            Assert.assertTrue(0 < shortestPath.length);
         }
         Assert.assertTrue(true);
     }
 
+   /*
     @Test(description="tangents")
     public void tangentsTest() {
         PseudoRandom rand = new PseudoRandom();

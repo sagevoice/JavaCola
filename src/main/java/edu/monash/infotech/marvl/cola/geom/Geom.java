@@ -377,7 +377,7 @@ public class Geom {
         return bt;
     }
 
-    public static boolean isPointInsidePoly(Point p, List<Point> poly) {
+    public static boolean isPointInsidePoly(Point p, List<? extends Point> poly) {
         for (int i = 1, n = poly.size(); i < n; ++i) {
             if (below(poly.get(i - 1), poly.get(i), p)) {
                 return false;
@@ -386,11 +386,11 @@ public class Geom {
         return true;
     }
 
-    public static boolean isAnyPInQ(final List<Point> p, final List<Point> q) {
+    public static boolean isAnyPInQ(final List<? extends Point> p, final List<? extends Point> q) {
         return !p.stream().allMatch(v -> !isPointInsidePoly(v, q));
     }
 
-    public static boolean polysOverlap(List<Point> p, List<Point> q) {
+    public static boolean polysOverlap(List<? extends Point> p, List<? extends Point> q) {
         if (isAnyPInQ(p, q)) {
             return true;
         }
