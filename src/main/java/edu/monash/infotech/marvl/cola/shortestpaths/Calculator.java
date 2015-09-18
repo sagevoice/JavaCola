@@ -21,8 +21,8 @@ public class Calculator<T> {
      * @param n  {number} number of nodes
      * @param es {Edge[]} array of edges
      */
-    public Calculator(final int n, final List<T> es, ToIntFunction<T> getSourceIndex, ToIntFunction<T> getTargetIndex,
-                      ToDoubleFunction<T> getLength)
+    public Calculator(final int n, final List<T> es, final ToIntFunction<T> getSourceIndex, final ToIntFunction<T> getTargetIndex,
+                      final ToDoubleFunction<T> getLength)
     {
         this.n = n;
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
@@ -36,8 +36,9 @@ public class Calculator<T> {
         i = this.es.size();
         while (0 < i--) {
             final T e = this.es.get(i);
-            int u = getSourceIndex.applyAsInt(e), v = getTargetIndex.applyAsInt(e);
-            double d = getLength.applyAsDouble(e);
+            final int u = getSourceIndex.applyAsInt(e);
+            final int v = getTargetIndex.applyAsInt(e);
+            final double d = getLength.applyAsDouble(e);
             this.neighbours[u].neighbours.add(new Neighbour(v, d));
             this.neighbours[v].neighbours.add(new Neighbour(u, d));
         }
@@ -49,10 +50,9 @@ public class Calculator<T> {
      *
      * @return the distance matrix
      *
-     * @method DistanceMatrix
      */
     public double[][] DistanceMatrix() {
-        double[][] D = new double[this.n][0];
+        final double[][] D = new double[this.n][0];
         for (int i = 0; i < this.n; ++i) {
             D[i] = this.dijkstraNeighbours(i);
         }
@@ -65,13 +65,12 @@ public class Calculator<T> {
      * @param start node index
      * @return array of path lengths
      *
-     * @method DistancesFromNode
      */
-    public double[] DistancesFromNode(int start) {
+    public double[] DistancesFromNode(final int start) {
         return this.dijkstraNeighbours(start);
     }
 
-    public double[] PathFromNodeToNode(int start, int end) {
+    public double[] PathFromNodeToNode(final int start, final int end) {
         return this.dijkstraNeighbours(start, end);
     }
 
@@ -82,10 +81,10 @@ public class Calculator<T> {
             final int start, final int end,
             final TriFunction<Integer, Integer, Integer, Double> prevCost)
     {
-        PriorityQueue<QueueEntry> q = new PriorityQueue<>((a, b) -> a.d <= b.d);
+        final PriorityQueue<QueueEntry> q = new PriorityQueue<>((a, b) -> a.d <= b.d);
         Node u = this.neighbours[start];
         QueueEntry qu = new QueueEntry(u, null, 0);
-        Map<String, Double> visitedFrom = new HashMap<>();
+        final Map<String, Double> visitedFrom = new HashMap<>();
         q.push(qu);
         while (!q.empty()) {
             qu = q.pop();
@@ -95,8 +94,8 @@ public class Calculator<T> {
             }
             int i = u.neighbours.size();
             while (0 < i--) {
-                Neighbour neighbour = u.neighbours.get(i);
-                Node v = this.neighbours[neighbour.id];
+                final Neighbour neighbour = u.neighbours.get(i);
+                final Node v = this.neighbours[neighbour.id];
 
                 // don't double back
                 if (null != qu.prev && v.id == qu.prev.node.id) {
@@ -105,18 +104,20 @@ public class Calculator<T> {
 
                 // don't retraverse an edge if it has already been explored
                 // from a lower cost route
-                String viduid = v.id + "," + u.id;
-                if (visitedFrom.containsKey(viduid) && visitedFrom.get(viduid) <= qu.d) { continue; }
+                final String viduid = v.id + "," + u.id;
+                if (visitedFrom.containsKey(viduid) && visitedFrom.get(viduid) <= qu.d) {
+                    continue;
+                }
 
-                double cc = null != qu.prev ? prevCost.apply(qu.prev.node.id, u.id, v.id) : 0;
-                double t = qu.d + neighbour.distance + cc;
+                final double cc = null != qu.prev ? prevCost.apply(qu.prev.node.id, u.id, v.id) : 0;
+                final double t = qu.d + neighbour.distance + cc;
 
                 // store cost of this traversal
                 visitedFrom.put(viduid, t);
                 q.push(new QueueEntry(v, qu, t));
             }
         }
-        List<Integer> path = new ArrayList<>();
+        final List<Integer> path = new ArrayList<>();
         while (null != qu.prev) {
             qu = qu.prev;
             path.add(qu.node.id);
@@ -124,22 +125,22 @@ public class Calculator<T> {
         return path;
     }
 
-    private double[] dijkstraNeighbours(int start) {
+    private double[] dijkstraNeighbours(final int start) {
         return this.dijkstraNeighbours(start, -1);
     }
 
 
-    private double[] dijkstraNeighbours(int start, int dest) {
-        PriorityQueue<Node> q = new PriorityQueue<>((a, b) -> a.d <= b.d);
+    private double[] dijkstraNeighbours(final int start, final int dest) {
+        final PriorityQueue<Node> q = new PriorityQueue<>((a, b) -> a.d <= b.d);
         int i = this.neighbours.length;
-        double[] d = new double[i];
+        final double[] d = new double[i];
         while (0 < i--) {
-            Node node = this.neighbours[i];
+            final Node node = this.neighbours[i];
             node.d = i == start ? 0 : Double.POSITIVE_INFINITY;
             node.q = q.push(node);
         }
         while (!q.empty()) {
-            Node u = q.pop();
+            final Node u = q.pop();
             d[u.id] = u.d;
             if (u.id == dest) {
                 final List<Double> path = new ArrayList<>();
@@ -150,20 +151,20 @@ public class Calculator<T> {
                 }
                 final double[] result = new double[path.size()];
                 i = 0;
-                for (Double p : path ) {
+                for (final Double p : path ) {
                     result[i++] = p.doubleValue();
                 }
                 return result;
             }
             i = u.neighbours.size();
             while (0 < i--) {
-                Neighbour neighbour = u.neighbours.get(i);
-                Node v = this.neighbours[neighbour.id];
-                double t = u.d + neighbour.distance;
+                final Neighbour neighbour = u.neighbours.get(i);
+                final Node v = this.neighbours[neighbour.id];
+                final double t = u.d + neighbour.distance;
                 if (Double.MAX_VALUE != u.d && v.d > t) {
                     v.d = t;
                     v.prev = u;
-                    q.reduceKey(v.q, v, (e, q2) -> e.q = q2);
+                    q.reduceKey(v.q, v, (e, q2) -> {e.q = q2;});
                 }
             }
         }
