@@ -2,9 +2,6 @@
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
-import edu.monash.infotech.marvl.cola.geom.Geom;
-import edu.monash.infotech.marvl.cola.geom.Point;
-import edu.monash.infotech.marvl.cola.geom.TangentVisibilityGraph;
 import edu.monash.infotech.marvl.cola.powergraph.Configuration;
 import edu.monash.infotech.marvl.cola.powergraph.LinkTypeAccessor;
 import edu.monash.infotech.marvl.cola.powergraph.Module;
@@ -21,6 +18,10 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,12 +35,20 @@ public class Tests {
         return Math.abs(actual - expected) <= threshold;
     }
 
-    private List<Link> mapJsonArrayToList(final List<Map<String, Object>> jsonArray) {
+    private List<Link> mapJsonArrayToLinkList(final List<Map<String, Object>> jsonArray) {
         final List<Link> result = jsonArray.stream().map(jsonObj -> {
             return new Link(jsonObj.get("source"), jsonObj.get("target"));
         }).collect(Collectors.toList());
         return result;
     }
+
+    private List<GraphNode> mapJsonArrayToNodeList(final List<Map<String, Object>> jsonArray) {
+        final List<GraphNode> result = jsonArray.stream().map(jsonObj -> {
+            return new GraphNode();
+        }).collect(Collectors.toList());
+        return result;
+    }
+
 
     @Test(description="small power-graph")
     public void smallPowerGraphTest () {
@@ -51,7 +60,7 @@ public class Tests {
 
             final int n = ((List)graph.get("nodes")).size();
             Assert.assertEquals(n, 7);
-            List<Link> links = mapJsonArrayToList((List<Map<String, Object>>)graph.get("links"));
+            List<Link> links = mapJsonArrayToLinkList((List<Map<String, Object>>)graph.get("links"));
             LinkTypeAccessor<Link> linkAccessor = new IntegerLinkAccessor();
             Configuration<Link> c = new Configuration<>(n, links, linkAccessor);
             Assert.assertEquals(c.modules.size(), 7);
@@ -89,54 +98,67 @@ public class Tests {
         }
         Assert.assertTrue(true);
     }
- /*
+
     @Test(description="all-pairs shortest paths")
     public void allPairsShortestPathsTest() {
         LayoutAdaptor d3cola = CoLa.adaptor();
 
-        d3.json("../examples/graphdata/triangle.json", function (error, graph) {
+        try (final InputStream stream = getClass().getResourceAsStream("/triangle.json")) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final MapType type = mapper.getTypeFactory().constructMapType(
+                Map.class, String.class, Object.class);
+            final Map<String, Object> graph = mapper.readValue(stream, type);
+            List<Link> links = mapJsonArrayToLinkList((List<Map<String, Object>>)graph.get("links"));
+            List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
+
             d3cola
-                .nodes(graph.nodes)
-                .links(graph.links)
-                .linkDistance(1);
-            var n = d3cola.nodes().length;
+                .nodes(nodes)
+                .links(links)
+                .linkDistance(Double.valueOf(1));
+            final int n = d3cola.nodes().size();
             Assert.assertEquals(n, 4);
-            var getSourceIndex = function (e) {
-                return e.source;
-            }
-            var getTargetIndex = function (e) {
-                return e.target;
-            }
-            var getLength = function (e) {
+
+
+             final ToIntFunction<Link> getSourceIndex = (e) -> {
+                return ((Integer)e.source).intValue();
+            };
+            final ToIntFunction<Link> getTargetIndex = (e) -> {
+                return ((Integer)e.target).intValue();
+            };
+            ToDoubleFunction<Link> getLength = (e) -> {
                 return 1;
-            }
-            double[][] D = (new Calculator(n, d3cola.links(), getSourceIndex, getTargetIndex, getLength)).DistanceMatrix();
-            deepEqual(D, [
-                [0, 1, 1, 2],
-                [1, 0, 1, 2],
-                [1, 1, 0, 1],
-                [2, 2, 1, 0],
-            ]);
-            var x = [0, 0, 1, 1], y = [1, 0, 0, 1];
-            Descent descent = new Descent([x, y], D);
-            var s0 = descent.reduceStress();
-            var s1 = descent.reduceStress();
+            };
+            double[][] D = (new Calculator<>(n, d3cola.links(), getSourceIndex, getTargetIndex, getLength)).DistanceMatrix();
+            Assert.assertEquals(D, new double[][]{
+                    {0, 1, 1, 2},
+                    {1, 0, 1, 2},
+                    {1, 1, 0, 1},
+                    {2, 2, 1, 0},
+            });
+            double[] x = new double[]{0, 0, 1, 1}, y = new double[]{1, 0, 0, 1};
+            Descent descent = new Descent(new double[][]{x, y}, D);
+            double s0 = descent.reduceStress();
+            double s1 = descent.reduceStress();
             Assert.assertTrue(s1 < s0);
-            var s2 = descent.reduceStress();
+            double s2 = descent.reduceStress();
             Assert.assertTrue(s2 < s1);
             d3cola.start(0,0,10);
-            var lengths = graph.links.map(l -> {
-                var u = l.source, v = l.target,
-                    dx = u.x - v.x, dy = u.y - v.y;
+            final List<Double> lengths = d3cola.links().stream().map(l -> {
+                GraphNode u = (GraphNode)l.source, v = (GraphNode)l.target;
+                double dx = u.x - v.x, dy = u.y - v.y;
                 return Math.sqrt(dx*dx + dy*dy);
-            }), avg =  (a) -> { return a.reduce( (u, v) -> { return u + v }) / a.length },
-                mean = avg(lengths),
-                variance = avg(lengths.map( (l) -> { var d = mean - l; return d * d; }));
+            }).collect(Collectors.toList());
+            Function<List<Double>, Double> avg = (a) -> { return a.stream().reduce( new Double(0), (u, v) -> { return u + v; }) / a.size(); };
+            final double mean = avg.apply(lengths);
+            final double variance = avg.apply(lengths.stream().map( (l) -> { double d = mean - l; return d * d; }).collect(Collectors.toList()));
             Assert.assertTrue(variance < 0.1);
-            start();
-        });
+        } catch (IOException e) {
+            log.error("IOException in allPairsShortestPathsTest", e);
+            throw new RuntimeException(e);
+        }
         Assert.assertTrue(true);
     }
+ /*
 
     @Test(description="edge lengths")
     public void edgeLengthsTest () {
