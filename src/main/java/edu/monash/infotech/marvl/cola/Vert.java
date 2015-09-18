@@ -1,25 +1,28 @@
 package edu.monash.infotech.marvl.cola;
 
-public class Vert {
+import edu.monash.infotech.marvl.cola.geom.Point;
+
+public class Vert extends Point {
 
     public int             id;
-    public double          x;
-    public double          y;
     public NodeWrapper     node;
     public GridLineSegment line;
 
-    Vert(final int id, final double x, final double y) {
+    public Vert(final double x, final double y) {
+        super(x, y);
+    }
+
+    public Vert(final int id, final double x, final double y) {
         this(id, x, y, null);
     }
 
-    Vert(final int id, final double x, final double y, final NodeWrapper node) {
+    public Vert(final int id, final double x, final double y, final NodeWrapper node) {
         this(id, x, y, node, null);
     }
 
-    Vert(final int id, final double x, final double y, final NodeWrapper node, final GridLineSegment line) {
+    public Vert(final int id, final double x, final double y, final NodeWrapper node, final GridLineSegment line) {
+        super(x, y);
         this.id = id;
-        this.x = x;
-        this.y = y;
         this.node = node;
         this.line = line;
     }

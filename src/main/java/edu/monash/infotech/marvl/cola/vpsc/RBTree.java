@@ -71,9 +71,9 @@ public class RBTree<T> extends TreeBase<T> {
 
                 // fix red violation
                 if (this.is_red(node) && this.is_red(p)) {
-                    boolean dir2 = ggp.right == gp;
+                    final boolean dir2 = ggp.right.equals(gp);
 
-                    if (node == p.get_child(last)) {
+                    if (node.equals(p.get_child(last))) {
                         ggp.set_child(dir2, this.single_rotate(gp, !last));
                     } else {
                         ggp.set_child(dir2, this.double_rotate(gp, !last));
@@ -155,7 +155,7 @@ public class RBTree<T> extends TreeBase<T> {
                             sibling.red = true;
                             node.red = true;
                         } else {
-                            boolean dir2 = gp.right == p;
+                            boolean dir2 = p.equals(gp.right);
 
                             if (this.is_red(sibling.get_child(last))) {
                                 gp.set_child(dir2, this.double_rotate(p, last));
@@ -178,7 +178,7 @@ public class RBTree<T> extends TreeBase<T> {
         // replace and remove if found
         if (null != found) {
             found.data = node.data;
-            p.set_child(p.right == node, node.get_child(node.left == null));
+            p.set_child(node.equals(p.right), node.get_child(node.left == null));
             this.size--;
         }
 

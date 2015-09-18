@@ -63,7 +63,7 @@ public class PairingHeap<T> {
     }
 
     public boolean contains(final PairingHeap<T> h) {
-        if (this == h) {
+        if (this.equals(h)) {
             return true;
         }
         for (int i = 0; i < this.subheaps.size(); i++) {

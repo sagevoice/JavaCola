@@ -161,7 +161,7 @@ public class LinkLengths {
                     w.onStack = false;
                     //add w to current strongly connected component
                     component.add(w.id);
-                    if (w == v) { break; }
+                    if (w.equals(v)) { break; }
                 }
                 // output the current strongly connected component
                 components.add(component);

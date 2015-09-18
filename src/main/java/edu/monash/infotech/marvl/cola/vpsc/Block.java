@@ -44,7 +44,7 @@ public class Block {
         v.visitNeighbours(u, (c, next, value) -> {
             double _dfdv = this.compute_lm(next, v, postAction, postValue);
             final ValueHolder<Double> dfdv = value;
-            if (next == c.right) {
+            if (next.equals(c.right)) {
                 dfdv.set(dfdv.get() + _dfdv * c.left.scale);
                 c.lm = _dfdv;
             } else {
@@ -58,7 +58,7 @@ public class Block {
 
     private void populateSplitBlock(final Variable v, final Variable prev) {
         v.visitNeighbours(prev, (c, next, value) -> {
-            next.offset = v.offset + (next == c.right ? c.gap : -c.gap);
+            next.offset = v.offset + (next.equals(c.right) ? c.gap : -c.gap);
             this.addVariable(next);
             this.populateSplitBlock(next, v);
         }, null);
@@ -83,7 +83,7 @@ public class Block {
         final ValueHolder<Constraint> valueHolder = new ValueHolder<>(null);
         this.findPath(lv, null, rv, (c, next, value) -> {
             final ValueHolder<Constraint> m = value;
-            if (!c.equality && c.right == next && (null == m.get() || c.lm < m.get().lm)) {
+            if (!c.equality && next.equals(c.right) && (null == m.get() || c.lm < m.get().lm)) {
                 m.set(c);
             }
         }, valueHolder);
@@ -96,7 +96,7 @@ public class Block {
         final ValueHolder<Boolean> valueHolder = new ValueHolder<>(false);
         v.visitNeighbours(prev, (c, next, value) -> {
             final ValueHolder<Boolean> endFound = value;
-            if (!endFound.get() && (next == to || this.findPath(next, v, to, visit, visitValue))) {
+            if (!endFound.get() && (next.equals(to) || this.findPath(next, v, to, visit, visitValue))) {
                 endFound.set(true);
                 visit.accept(c, next, visitValue);
             }
@@ -107,7 +107,7 @@ public class Block {
     // Search active constraint tree from u to see if there is a directed path to v.
     // Returns true if path is found.
     public boolean isActiveDirectedPathBetween(final Variable u, final Variable v) {
-        if (u == v) {
+        if (u.equals(v)) {
             return true;
         }
         int i = u.cOut.size();

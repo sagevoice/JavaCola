@@ -63,7 +63,7 @@ public class Iterator<T> {
                         this._cursor = null;
                         break;
                     }
-                } while (this._cursor.right == save);
+                } while (save.equals(this._cursor.right));
             } else {
                 // get the next node from the subtree
                 this._ancestors.add(this._cursor);
@@ -92,7 +92,7 @@ public class Iterator<T> {
                         this._cursor = null;
                         break;
                     }
-                } while (this._cursor.left == save);
+                } while (save.equals(this._cursor.left));
             } else {
                 this._ancestors.add(this._cursor);
                 this._maxNode(this._cursor.left);

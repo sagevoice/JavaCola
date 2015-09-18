@@ -155,7 +155,7 @@ public class GridRouter<T> {
             l.verts.sort(delta);
             for (int i = 1; i < l.verts.size(); i++) {
                 Vert u = l.verts.get(i - 1), v = l.verts.get(i);
-                if (null != u.node && u.node == v.node && u.node.leaf) {
+                if (null != u.node && u.node.equals(v.node) && u.node.leaf) {
                     continue;
                 }
                 this.edges.add(new LinkWrapper(u.id, v.id, Math.abs(isHoriz ? (v.x - u.x) : (v.y - u.y))));
@@ -240,7 +240,7 @@ public class GridRouter<T> {
     private AncestorPath findAncestorPathBetween(final NodeWrapper a, final NodeWrapper b) {
         final List<NodeWrapper> aa = this.findLineage(a), ba = this.findLineage(b);
         int i = 0;
-        while (aa.get(i) == ba.get(i)) {
+        while (aa.get(i).equals(ba.get(i))) {
             i++;
         }
         // i-1 to include common ancestor only once (as first element)
@@ -431,7 +431,7 @@ public class GridRouter<T> {
 
     // path may have been reversed by the subsequence processing in orderEdges
     // so now we need to restore the original order
-    private static void unreverseEdges(final List<List<Segment>> routes, final List<GridPath<Vert>> routePaths) {
+    public static void unreverseEdges(final List<List<Segment>> routes, final List<GridPath<Vert>> routePaths) {
         for (int i = 0, n = routes.size(); i < n; i++) {
             final List<Segment> segments = routes.get(i);
             final GridPath<Vert> path = routePaths.get(i);
@@ -479,7 +479,7 @@ public class GridRouter<T> {
 
     // returns an ordering (a lookup function) that determines the correct order to nudge the
     // edge paths apart to minimize crossings
-    private static ToBooleanBiFunction<Integer, Integer> orderEdges(final List<GridPath<Vert>> routePaths) {
+    public static ToBooleanBiFunction<Integer, Integer> orderEdges(final List<GridPath<Vert>> routePaths) {
         final List<Pair> edgeOrder = new ArrayList<>();
         final int n = routePaths.size();
         for (int i = 0; i < n - 1; i++) {
@@ -589,7 +589,9 @@ public class GridRouter<T> {
             final Vert a = this.verts.get(u), b = this.verts.get(v), c = this.verts.get(w);
             final double dx = Math.abs(c.x - a.x), dy = Math.abs(c.y - a.y);
             // don't count bends from internal node edges
-            if (a.node == source && a.node == b.node || b.node == target && b.node == c.node) { return 0.0; }
+            if (source.equals(a.node) && a.node.equals(b.node) || target.equals(b.node) && b.node.equals(c.node)) {
+                return 0.0;
+            }
             return 1 < dx && 1 < dy ? 1000.0 : 0.0;
         };
 
@@ -606,8 +608,8 @@ public class GridRouter<T> {
 
         return pathPoints.stream().filter((v) -> {
             int i = pathPoints.indexOf(v);
-            return !(i < pathPoints.size() - 1 && pathPoints.get(i + 1).node == source && v.node == source
-                     || i > 0 && v.node == target && pathPoints.get(i - 1).node == target);
+            return !(i < pathPoints.size() - 1 && source.equals(pathPoints.get(i + 1).node) && source.equals(v.node)
+                     || 0 < i && target.equals(v.node) && target.equals(pathPoints.get(i - 1).node));
         }).collect(Collectors.toCollection(GridPath::new));
     }
 

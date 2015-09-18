@@ -165,7 +165,9 @@ public class Descent {
                 Huu[i] = g[i][u] = 0;
             }
             for (int v = 0; v < n; ++v) {
-                if (u == v) { continue; }
+                if (u == v) {
+                    continue;
+                }
 
                 // The following loop randomly displaces nodes that are at identical positions
                 int maxDisplaces = n; // avoid infinite loop in the case of numerical issues, such as huge values

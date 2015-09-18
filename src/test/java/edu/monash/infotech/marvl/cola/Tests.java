@@ -17,11 +17,9 @@ import org.testng.annotations.*;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
@@ -200,8 +198,8 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-    @Test(description="group")
-    public void groupTest () {
+    @Test(description = "group")
+    public void groupTest() {
         LayoutAdaptor d3cola = CoLa.adaptor();
 
         final ToDoubleFunction<Link> length = (l) -> {
@@ -213,10 +211,10 @@ public class Tests {
         final Group g = new Group(10, Arrays.asList(new GraphNode(0)));
 
         d3cola
-            .linkDistance(length)
-            .avoidOverlaps(true)
-            .nodes(Arrays.asList(u,v))
-            .groups(Arrays.asList(g));
+                .linkDistance(length)
+                .avoidOverlaps(true)
+                .nodes(Arrays.asList(u, v))
+                .groups(Arrays.asList(g));
         d3cola.start(10, 10, 10);
 
         Assert.assertEquals(g.bounds.width(), 30, 0.1);
@@ -225,7 +223,7 @@ public class Tests {
         Assert.assertEquals(Math.abs(u.y - v.y), 20, 0.1);
     }
 
-    @Test(description="equality constraints")
+    @Test(description = "equality constraints")
     public void equalityConstraintsTest() {
         LayoutAdaptor d3cola = CoLa.adaptor();
 
@@ -238,10 +236,10 @@ public class Tests {
             List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
 
             d3cola
-                .nodes(nodes)
-                .links(links)
-                .constraints(Arrays.asList(new Constraint("separation", "x", 0, 1, 0, true),
-                                           new Constraint("separation", "y", 0, 2, 0, true)));
+                    .nodes(nodes)
+                    .links(links)
+                    .constraints(Arrays.asList(new Constraint("separation", "x", 0, 1, 0, true),
+                                               new Constraint("separation", "y", 0, 2, 0, true)));
             d3cola.start(20, 20, 20);
             Assert.assertTrue(0.001 > Math.abs(nodes.get(0).x - nodes.get(1).x));
             Assert.assertTrue(0.001 > Math.abs(nodes.get(0).y - nodes.get(2).y));
@@ -256,7 +254,7 @@ public class Tests {
         return (int)Math.round(rand.getNext() * r);
     }
 
-    @Test(description="convex hulls")
+    @Test(description = "convex hulls")
     public void convexHullsTest() {
         final PseudoRandom rand = new PseudoRandom();
         final int width = 100, height = 100;
@@ -280,7 +278,7 @@ public class Tests {
         }
     }
 
-    @Test(description="radial sort")
+    @Test(description = "radial sort")
     public void radialSortTest() {
         final int n = 100;
         final int width = 400, height = 400;
@@ -305,230 +303,247 @@ public class Tests {
         }, valueHolder);
     }
 
-  /*
     private double length(final Point p, final Point q) {
         final double dx = p.x - q.x, dy = p.y - q.y;
         return dx * dx + dy * dy;
     }
 
-    private Point[] makePoly(final PseudoRandom rand) {
+    private List<Point> makePoly(final PseudoRandom rand) {
         return makePoly(rand, 10, 10);
     }
 
-    private Point[] makePoly(final PseudoRandom rand, final double width, final double height) {
-        var n = nextInt(rand, 7) + 3;
-        var P = [];
-        loop: for (var i = 0; i < n; ++i) {
-            var p = { x: nextInt(width), y: nextInt(height) };
-            var ctr = 0;
-            while (i > 0 && length(P[i - 1], p) < 1 // min segment length is 1
-                || i > 1 && ( // new point must keep poly convex
-                        Geom.isLeft(P[i - 2], P[i - 1], p) <= 0
-                    || Geom.isLeft(P[i - 1], p, P[0]) <= 0
-                    || Geom.isLeft(p, P[0], P[1]) <= 0)) {
-                if (ctr++ > 10) break loop; // give up after ten tries (maybe not enough space left for another convex point)
-                p = { x: nextInt(width), y: nextInt(height) };
+    private List<Point> makePoly(final PseudoRandom rand, final int width, final int height) {
+        final int n = nextInt(rand, 7) + 3;
+        List<Point> P = new ArrayList<>();
+        loop:
+        for (int i = 0; i < n; ++i) {
+            Point p = new Point(nextInt(rand, width), nextInt(rand, height));
+            int ctr = 0;
+            while (0 < i && 1 > length(P.get(i - 1), p) // min segment length is 1
+                   || 1 < i && ( // new point must keep poly convex
+                    0 >= Geom.isLeft(P.get(i - 2), P.get(i - 1), p)
+                    || 0 >= Geom.isLeft(P.get(i - 1), p, P.get(0))
+                    || 0 >= Geom.isLeft(p, P.get(0), P.get(1)))) {
+                if (10 < ctr++) {
+                    break loop; // give up after ten tries (maybe not enough space left for another convex point)
+                }
+                p = new Point(nextInt(rand, width), nextInt(rand, height));
             }
-            P.push(p);
+            P.add(p);
         }
-        if (P.length > 2) { // must be at least triangular
-            P.push({ x: P[0].x, y: P[0].y });
+        if (2 < P.size()) { // must be at least triangular
+            P.add(new Point(P.get(0).x, P.get(0).y));
             return P;
         }
         return makePoly(rand, width, height);
     }
 
-    private List<Point[]> makeNonoverlappingPolys(final PseudoRandom rand, final int n) {
-        var P = [];
-        var overlaps = function (p) {
-            for (var i = 0; i < P.length; i++) {
-                var q = P[i];
-                if (Geom.polysOverlap(p, q)) return true;
+    private List<List<Point>> makeNonoverlappingPolys(final PseudoRandom rand, final int n) {
+        List<List<Point>> P = new ArrayList<>();
+        Predicate<List<Point>> overlaps = (p) -> {
+            for (int i = 0; i < P.size(); i++) {
+                final List<Point> q = P.get(i);
+                if (Geom.polysOverlap(p, q)) { return true; }
             }
             return false;
-        }
-        for (var i = 0; i < n; i++) {
-            var p = makePoly(rand);
-            while (overlaps(p)) {
-                var dx = nextInt(10) - 5, dy = nextInt(10) - 5;
-                p.forEach(function (p) { p.x += dx; p.y += dy; });
+        };
+        for (int i = 0; i < n; i++) {
+            List<Point> p = makePoly(rand);
+            while (overlaps.test(p)) {
+                double dx = nextInt(rand, 10) - 5, dy = nextInt(rand, 10) - 5;
+                p.forEach((pt) -> { pt.x += dx; pt.y += dy; });
             }
-            P.push(p);
+            P.add(p);
         }
-        var minX = 0, minY = 0;
-        P.forEach(function (p) { p.forEach(function (p) {
-                minX = Math.min(minX, p.x);
-                minY = Math.min(minY, p.y);
-            })
+        List<Point> minPoly = new ArrayList<>();
+        minPoly.add(new Point(Double.MAX_VALUE, Double.MAX_VALUE));
+        minPoly = P.stream().reduce(minPoly, (poly0, poly1) -> {
+            final Point minPt1 = poly1.stream().reduce(new Point(Double.valueOf(Double.MAX_VALUE), Double.valueOf(Double.MAX_VALUE)), (pt0, pt1) -> {
+                pt0.x = Math.min(pt0.x, pt1.x);
+                pt0.y = Math.min(pt0.y, pt1.y);
+                return pt0;
+            });
+            final Point minPt0 = poly0.get(0);
+            minPt0.x = Math.min(minPt0.x, minPt1.x);
+            minPt0.y = Math.min(minPt0.y, minPt1.y);
+            return poly0;
         });
-        P.forEach(function (p) {
-            p.forEach(function (p) { p.x -= minX; p.y -= minY; });
+        final double minX = minPoly.get(0).x, minY = minPoly.get(0).y;
+        P.forEach((p) -> {
+            p.forEach((pt) -> { pt.x -= minX; pt.y -= minY; });
         });
         return P;
     }
 
-    private Point midPoint(final Point p) {
-        var mx = 0, my = 0;
-        var n = p.length - 1;
-        for (var i = 0; i < n; i++) {
-            var q = p[i];
+    private Point midPoint(final List<Point> p) {
+        double mx = 0, my = 0;
+        final int n = p.size() - 1;
+        for (int i = 0; i < n; i++) {
+            final Point q = p.get(i);
             mx += q.x;
             my += q.y;
         }
-        return { x: mx/n, y: my/n };
+        return new Point(mx / n, my / n);
     }
 
-    private int countRouteIntersections(routes) {
-        var ints = [];
-        for (var i = 0; i < routes.length - 1; i++) {
-            for (var j = i + 1; j < routes.length ; j++) {
-                var r1 = routes[i], r2 = routes[j];
-                r1.forEach(function (s1) {
-                    r2.forEach(function (s2) {
-                        var int = Rectangle.lineIntersection(s1[0].x, s1[0].y, s1[1].x, s1[1].y, s2[0].x, s2[0].y, s2[1].x, s2[1].y);
-                        if (int) ints.push(int);
-                    })
-                })
+    private int countRouteIntersections(final List<List<Segment>> routes) {
+        final List<Point> ints = new ArrayList<>();
+        for (int i = 0; i < routes.size() - 1; i++) {
+            for (int j = i + 1; j < routes.size(); j++) {
+                final List<Segment> r1 = routes.get(i), r2 = routes.get(j);
+                r1.forEach((s1) -> {
+                    r2.forEach((s2) -> {
+                        final Point intersection = Rectangle
+                                .lineIntersection(s1.p0.x, s1.p0.y, s1.p1.x, s1.p1.y, s2.p0.x, s2.p0.y, s2.p1.x, s2.p1.y);
+                        if (null != intersection) {
+                            ints.add(intersection);
+                        }
+                    });
+                });
             }
         }
-        return ints.length;
+        return ints.size();
     }
 
-    @Test(description="metro crossing min")
-    public void metroCrossingMinTest () {
-        var verts, edges, order, routes;
-        function makeInstance() {
-            verts.forEach(function (v, i) {
+    @Test(description = "metro crossing min")
+    public void metroCrossingMinTest() {
+        final List<Vert> verts = new ArrayList<>();
+        final List<GridPath<Vert>> edges = new ArrayList<>();
+        final ValueHolder<ToBooleanBiFunction<Integer, Integer>> order = new ValueHolder<>(null);
+        final List<List<Segment>> routes = new ArrayList<>();
+        final VoidConsumer makeInstance = () -> {
+            for (int i = 0; i < verts.size(); i++) {
+                final Vert v = verts.get(i);
                 v.id = i;
-                v.edges = {};
-            });
-            edges.forEach(function (e, i) {
-                e.id = i;
-            });
-        }
-        function twoParallelSegments() {
-            verts = [
-                { x: 0, y: 10 },
-                { x: 10, y: 10 }
-            ];
-            edges = [
-                [verts[0], verts[1]],
-                [verts[0], verts[1]]
-            ];
-            makeInstance();
-        }
-        function threeByThreeSegments() {
-            verts = [
-                { x: 0, y: 10 },
-                { x: 10, y: 10 },
-                { x: 10, y: 20 },
-                { x: 10, y: 30 },
-                { x: 20, y: 20 },
-                { x: 10, y: 0 },
-                { x: 0, y: 20 }
-            ];
-            edges = [
-                [verts[0], verts[1], verts[2], verts[3]],
-                [verts[0], verts[1], verts[2], verts[4]],
-                [verts[5], verts[1], verts[2], verts[6]]
-            ];
-            makeInstance();
-        }
-        function regression1() {
-            verts = [
-                {x:430.79999999999995, y:202.5},
-                {x:464.4, y:202.5},
-                {x:464.4, y:261.6666666666667},
-                {x:464.4, y:320.83333333333337},
-                {x:474, y:320.83333333333337},
-                {x:486, y:320.83333333333337},
-                {x:498.0000000000001, y:202.5},
-                {x:474, y:202.5},
-            ];
-            verts.forEach(function(v) {
+            }
+        };
+        final VoidConsumer twoParallelSegments = () -> {
+            verts.clear();
+            verts.addAll(Arrays.asList(
+                    new Vert(0, 10),
+                    new Vert(10, 10)
+            ));
+            edges.clear();
+            edges.addAll(Arrays.asList(
+                    new GridPath<>(Arrays.asList(verts.get(0), verts.get(1))),
+                    new GridPath<>(Arrays.asList(verts.get(0), verts.get(1)))
+            ));
+            makeInstance.accept();
+        };
+        final VoidConsumer threeByThreeSegments = () -> {
+            verts.clear();
+            verts.addAll(Arrays.asList(
+                    new Vert(0, 10),
+                    new Vert(10, 10),
+                    new Vert(10, 20),
+                    new Vert(10, 30),
+                    new Vert(20, 20),
+                    new Vert(10, 0),
+                    new Vert(0, 20)
+            ));
+            edges.clear();
+            edges.addAll(Arrays.asList(
+                    new GridPath<>(Arrays.asList(verts.get(0), verts.get(1), verts.get(2), verts.get(3))),
+                    new GridPath<>(Arrays.asList(verts.get(0), verts.get(1), verts.get(2), verts.get(4))),
+                    new GridPath<>(Arrays.asList(verts.get(5), verts.get(1), verts.get(2), verts.get(6)))
+            ));
+            makeInstance.accept();
+        };
+        final VoidConsumer regression1 = () -> {
+            verts.clear();
+            verts.addAll(Arrays.asList(
+                    new Vert(430.79999999999995, 202.5),
+                    new Vert(464.4, 202.5),
+                    new Vert(464.4, 261.6666666666667),
+                    new Vert(464.4, 320.83333333333337),
+                    new Vert(474, 320.83333333333337),
+                    new Vert(486, 320.83333333333337),
+                    new Vert(498.0000000000001, 202.5),
+                    new Vert(474, 202.5)
+            ));
+            verts.forEach((v) -> {
                 v.x -= 400;
                 v.y -= 160;
                 v.x /= 4;
                 v.y /= 8;
             });
-            edges = [[
-                verts[0],
-                verts[1],
-                verts[2],
-                verts[3],
-                verts[4],
-                verts[5]
-                ], [
-                verts[6],
-                verts[7],
-                verts[1],
-                verts[0]
-                ]];
-            makeInstance();
-        }
-        function nudge() {
-            order = GridRouter.orderEdges(edges);
-            routes = edges.map((e) -> { return GridRouter.makeSegments(e); });
-            GridRouter.nudgeSegments(routes, 'x', 'y', order, 2);
-            GridRouter.nudgeSegments(routes, 'y', 'x', order, 2);
+            edges.clear();
+            edges.addAll(Arrays.asList(
+                    new GridPath<>(Arrays.asList(verts.get(0), verts.get(1), verts.get(2), verts.get(3), verts.get(4), verts.get(5))),
+                    new GridPath<>(Arrays.asList(verts.get(6), verts.get(7), verts.get(1), verts.get(0)))
+            ));
+            makeInstance.accept();
+        };
+        final VoidConsumer nudge = () -> {
+            order.set(GridRouter.orderEdges(edges));
+            routes.clear();
+            final List<List<Segment>> newRoutes = edges.stream().map((e) -> { return GridRouter.makeSegments(e); }).collect(Collectors.toList());
+            routes.addAll(newRoutes);
+            GridRouter.nudgeSegments(routes, "x", "y", order.get(), 2);
+            GridRouter.nudgeSegments(routes, "y", "x", order.get(), 2);
             GridRouter.unreverseEdges(routes, edges);
-        }
+        };
 
         // trivial case
-        twoParallelSegments();
-        nudge();
+        twoParallelSegments.accept();
+        nudge.accept();
         // two segments, one reversed
-        edges[1].reverse();
-        nudge();
+        Collections.reverse(edges.get(1));
+        nudge.accept();
 
-        threeByThreeSegments();
-        var lcs = new ongestCommonSubsequence('ABAB'.split(''), 'DABA'.split(''));
-        deepEqual(lcs.getSequence(), 'ABA'.split(''));
-        lcs = new LongestCommonSubsequence(edges[0], edges[1]);
+        threeByThreeSegments.accept();
+        LongestCommonSubsequence<String> lcsString = new LongestCommonSubsequence<>(Arrays.asList("ABAB".split("")),
+                                                                                    Arrays.asList("DABA".split("")));
+        Assert.assertEquals(lcsString.getSequence(), Arrays.asList("ABA".split("")));
+        LongestCommonSubsequence<Vert> lcs = new LongestCommonSubsequence<>(edges.get(0), edges.get(1));
         Assert.assertEquals(lcs.length, 3);
-        deepEqual(lcs.getSequence().map((v) -> { return v.id }), [0, 1, 2]);
-        var e0reversed = edges[0].slice(0).reverse();
-        lcs = new LongestCommonSubsequence(e0reversed, edges[1]);
-        deepEqual(lcs.getSequence().map((v) -> { return v.id }), [2, 1, 0]);
+        Assert.assertEquals(lcs.getSequence().stream().map((v) -> { return v.id; }).collect(Collectors.toList()),
+                            Arrays.asList(Integer.valueOf(0), Integer.valueOf(1), Integer.valueOf(2)));
+        final GridPath<Vert> e0reversed = new GridPath<>(edges.get(0));
+        Collections.reverse(e0reversed);
+        lcs = new LongestCommonSubsequence(e0reversed, edges.get(1));
+        Assert.assertEquals(lcs.getSequence().stream().map((v) -> { return v.id; }).collect(Collectors.toList()),
+                            Arrays.asList(Integer.valueOf(2), Integer.valueOf(1), Integer.valueOf(0)));
         Assert.assertTrue(lcs.reversed);
 
-        nudge();
-        Assert.assertEquals(routes[0].length, 2);
-        Assert.assertEquals(routes[1].length, 3);
-        Assert.assertEquals(routes[2].length, 2);
+        nudge.accept();
+        Assert.assertEquals(routes.get(0).size(), 2);
+        Assert.assertEquals(routes.get(1).size(), 3);
+        Assert.assertEquals(routes.get(2).size(), 2);
 
         Assert.assertEquals(countRouteIntersections(routes), 2);
 
         // flip it in y and try again
-        threeByThreeSegments();
-        verts.forEach( (v) -> { v.y = 30 - v.y });
-        nudge();
+        threeByThreeSegments.accept();
+        verts.forEach((v) -> { v.y = 30 - v.y; });
+        nudge.accept();
         Assert.assertEquals(countRouteIntersections(routes), 2);
 
         // reverse the first edge path and see what happens
-        threeByThreeSegments();
-        edges[0].reverse();
-        nudge();
+        threeByThreeSegments.accept();
+        Collections.reverse(edges.get(0));
+        nudge.accept();
         Assert.assertEquals(countRouteIntersections(routes), 2);
 
         // reverse the second edge path
-        threeByThreeSegments();
-        edges[1].reverse();
-        nudge();
+        threeByThreeSegments.accept();
+        Collections.reverse(edges.get(1));
+        nudge.accept();
         Assert.assertEquals(countRouteIntersections(routes), 2);
 
         // reverse the first 2 edge paths
-        threeByThreeSegments();
-        edges[0].reverse();
-        edges[1].reverse();
-        nudge();
+        threeByThreeSegments.accept();
+        Collections.reverse(edges.get(0));
+        Collections.reverse(edges.get(1));
+        nudge.accept();
         Assert.assertEquals(countRouteIntersections(routes), 2);
 
-        regression1();
-        nudge();
+        regression1.accept();
+        nudge.accept();
         Assert.assertEquals(countRouteIntersections(routes), 0);
     }
 
+  /*
     // next steps:
     //  o label node and group centre and boundary vertices
     //  - non-traversable regions (obstacles) are determined by finding the highest common ancestors of the source and target nodes

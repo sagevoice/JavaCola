@@ -5,11 +5,9 @@ import edu.monash.infotech.marvl.cola.TriFunction;
 import edu.monash.infotech.marvl.cola.vpsc.ValueHolder;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 
 public class Geom {
 
@@ -39,7 +37,8 @@ public class Geom {
      * @return the convex hull as an array of points
      */
     public static List<Point> ConvexHull(List<Point> S) {
-        Point[] P = S.stream().sorted((a, b) -> a.x != b.x ? (int)Math.signum(b.x - a.x) : (int)Math.signum(b.y - a.y)).toArray(Point[]::new);
+        Point[] P = S.stream().sorted((a, b) -> a.x != b.x ? (int)Math.signum(b.x - a.x) : (int)Math.signum(b.y - a.y)).toArray(
+                Point[]::new);
         int n = S.size(), i;
         int minmin = 0;
         double xmin = P[0].x;
@@ -145,7 +144,7 @@ public class Geom {
     //            V = array of vertices for a 2D convex polygon with V[n] = V[0]
     //    Output: rtan = index of rightmost tangent point V[rtan]
     //            ltan = index of leftmost tangent point V[ltan]
-    public static LRTangent tangent_PointPolyC(Point P, Point[] V) {
+    public static LRTangent tangent_PointPolyC(Point P, List<? extends Point> V) {
         return new LRTangent(Ltangent_PointPolyC(P, V), Rtangent_PointPolyC(P, V));
     }
 
@@ -154,8 +153,8 @@ public class Geom {
     //            n = number of polygon vertices
     //            V = array of vertices for a 2D convex polygon with V[n] = V[0]
     //    Return: index "i" of rightmost tangent point V[i]
-    public static int Rtangent_PointPolyC(Point P, Point[] V) {
-        int n = V.length - 1;
+    public static int Rtangent_PointPolyC(Point P, List<? extends Point> V) {
+        int n = V.size() - 1;
 
         // use binary search for large convex polygons
         int a, b, c;            // indices for edge chain endpoints
@@ -163,32 +162,32 @@ public class Geom {
 
         // rightmost tangent = maximum for the isLeft() ordering
         // test if V[0] is a local maximum
-        if (below(P, V[1], V[0]) && !above(P, V[n - 1], V[0])) {
+        if (below(P, V.get(1), V.get(0)) && !above(P, V.get(n - 1), V.get(0))) {
             return 0;               // V[0] is the maximum tangent point
         }
 
         for (a = 0, b = n; ;) {          // start chain = [0,n] with V[n]=V[0]
             if (b - a == 1) {
-                if (above(P, V[a], V[b])) {
+                if (above(P, V.get(a), V.get(b))) {
                     return a;
                 } else {
                     return b;
                 }
             }
             c = (int)Math.floor((a + b) / 2);        // midpoint of [a,b], and 0<c<n
-            dnC = below(P, V[c + 1], V[c]);
-            if (dnC && !above(P, V[c - 1], V[c])) {
+            dnC = below(P, V.get(c + 1), V.get(c));
+            if (dnC && !above(P, V.get(c - 1), V.get(c))) {
                 return c;          // V[c] is the maximum tangent point
             }
 
             // no max yet, so continue with the binary search
             // pick one of the two subchains [a,c] or [c,b]
-            upA = above(P, V[a + 1], V[a]);
+            upA = above(P, V.get(a + 1), V.get(a));
             if (upA) {                       // edge a points up
                 if (dnC) {                         // edge c points down
                     b = c;                           // select [a,c]
                 } else {                           // edge c points up
-                    if (above(P, V[a], V[c])) {     // V[a] above V[c]
+                    if (above(P, V.get(a), V.get(c))) {     // V[a] above V[c]
                         b = c;                       // select [a,c]
                     } else {                          // V[a] below V[c]
                         a = c;                       // select [c,b]
@@ -198,7 +197,7 @@ public class Geom {
                 if (!dnC) {                       // edge c points up
                     a = c;                           // select [c,b]
                 } else {                           // edge c points down
-                    if (below(P, V[a], V[c])) {     // V[a] below V[c]
+                    if (below(P, V.get(a), V.get(c))) {     // V[a] below V[c]
                         b = c;                       // select [a,c]
                     } else {                         // V[a] above V[c]
                         a = c;                       // select [c,b]
@@ -213,21 +212,21 @@ public class Geom {
     //            n = number of polygon vertices
     //            V = array of vertices for a 2D convex polygon with V[n]=V[0]
     //    Return: index "i" of leftmost tangent point V[i]
-    public static int Ltangent_PointPolyC(Point P, Point[] V) {
-        int n = V.length - 1;
+    public static int Ltangent_PointPolyC(Point P, List<? extends Point> V) {
+        int n = V.size() - 1;
         // use binary search for large convex polygons
         int a, b, c;             // indices for edge chain endpoints
         boolean dnA, dnC;           // test for down direction of edges a and c
 
         // leftmost tangent = minimum for the isLeft() ordering
         // test if V[0] is a local minimum
-        if (above(P, V[n - 1], V[0]) && !below(P, V[1], V[0])) {
+        if (above(P, V.get(n - 1), V.get(0)) && !below(P, V.get(1), V.get(0))) {
             return 0;               // V[0] is the minimum tangent point
         }
 
         for (a = 0, b = n; ;) {          // start chain = [0,n] with V[n] = V[0]
             if (b - a == 1) {
-                if (below(P, V[a], V[b])) {
+                if (below(P, V.get(a), V.get(b))) {
                     return a;
                 } else {
                     return b;
@@ -235,19 +234,19 @@ public class Geom {
             }
 
             c = (int)Math.floor((a + b) / 2);        // midpoint of [a,b], and 0<c<n
-            dnC = below(P, V[c + 1], V[c]);
-            if (above(P, V[c - 1], V[c]) && !dnC) {
+            dnC = below(P, V.get(c + 1), V.get(c));
+            if (above(P, V.get(c - 1), V.get(c)) && !dnC) {
                 return c;          // V[c] is the minimum tangent point
             }
 
             // no min yet, so continue with the binary search
             // pick one of the two subchains [a,c] or [c,b]
-            dnA = below(P, V[a + 1], V[a]);
+            dnA = below(P, V.get(a + 1), V.get(a));
             if (dnA) {                       // edge a points down
                 if (!dnC) {                       // edge c points up
                     b = c;                           // select [a,c]
                 } else {                           // edge c points down
-                    if (below(P, V[a], V[c])) {     // V[a] below V[c]
+                    if (below(P, V.get(a), V.get(c))) {     // V[a] below V[c]
                         b = c;                       // select [a,c]
                     } else {                         // V[a] above V[c]
                         a = c;                       // select [c,b]
@@ -258,7 +257,7 @@ public class Geom {
                 if (dnC) {                        // edge c points down
                     a = c;                           // select [c,b]
                 } else {                           // edge c points up
-                    if (above(P, V[a], V[c])) {    // V[a] above V[c]
+                    if (above(P, V.get(a), V.get(c))) {    // V[a] above V[c]
                         b = c;                       // select [a,c]
                     } else {                         // V[a] below V[c]
                         a = c;                       // select [c,b]
@@ -275,31 +274,31 @@ public class Geom {
     //            W = array of vertices for convex polygon 2 with W[n]=W[0]
     //    Output: *t1 = index of tangent point V[t1] for polygon 1
     //            *t2 = index of tangent point W[t2] for polygon 2
-    public static BiTangent tangent_PolyPolyC(Point[] V, Point[] W, BiFunction<Point, Point[], Integer> t1, BiFunction<Point, Point[], Integer> t2, TriFunction<Point, Point, Point, Boolean> cmp1, TriFunction<Point, Point, Point, Boolean> cmp2) {
+    public static BiTangent tangent_PolyPolyC(List<Point> V, List<Point> W, BiFunction<Point, List<Point>, Integer> t1, BiFunction<Point, List<Point>, Integer> t2, TriFunction<Point, Point, Point, Boolean> cmp1, TriFunction<Point, Point, Point, Boolean> cmp2) {
         int ix1, ix2;      // search indices for polygons 1 and 2
 
         // first get the initial vertex on each polygon
-        ix1 = t1.apply(W[0], V);   // right tangent from W[0] to V
-        ix2 = t2.apply(V[ix1], W); // left tangent from V[ix1] to W
+        ix1 = t1.apply(W.get(0), V);   // right tangent from W[0] to V
+        ix2 = t2.apply(V.get(ix1), W); // left tangent from V[ix1] to W
 
         // ping-pong linear search until it stabilizes
         boolean done = false;                    // flag when done
         while (!done) {
             done = true;                     // assume done until...
             while (true) {
-                if (ix1 == V.length - 1) {
+                if (ix1 == V.size() - 1) {
                     ix1 = 0;
                 }
-                if (cmp1.apply(W[ix2], V[ix1], V[ix1 + 1])) {
+                if (cmp1.apply(W.get(ix2), V.get(ix1), V.get(ix1 + 1))) {
                     break;
                 }
                 ++ix1;                       // get Rtangent from W[ix2] to V
             }
             while (true) {
                 if (ix2 == 0) {
-                    ix2 = W.length - 1;
+                    ix2 = W.size() - 1;
                 }
-                if (cmp2.apply(V[ix1], W[ix2], W[ix2 - 1])) {
+                if (cmp2.apply(V.get(ix1), W.get(ix2), W.get(ix2 - 1))) {
                     break;
                 }
                 --ix2;                       // get Ltangent from V[ix1] to W
@@ -309,32 +308,32 @@ public class Geom {
         return new BiTangent(ix1, ix2);
     }
 
-    public static BiTangent LRtangent_PolyPolyC(Point[] V, Point[] W) {
+    public static BiTangent LRtangent_PolyPolyC(List<Point> V, List<Point> W) {
         BiTangent rl = RLtangent_PolyPolyC(W, V);
         return new BiTangent(rl.t2, rl.t1);
     }
 
-    public static BiTangent RLtangent_PolyPolyC(Point[] V, Point[] W) {
+    public static BiTangent RLtangent_PolyPolyC(List<Point> V, List<Point> W) {
         return tangent_PolyPolyC(V, W, (a, b) -> Rtangent_PointPolyC(a, b), (a, b) -> Ltangent_PointPolyC(a, b), (a, b, c) -> above(a, b, c), (a, b, c) -> below(a, b, c));
     }
 
-    public static BiTangent LLtangent_PolyPolyC(Point[] V, Point[] W) {
+    public static BiTangent LLtangent_PolyPolyC(List<Point> V, List<Point> W) {
         return tangent_PolyPolyC(V, W, (a, b) -> Ltangent_PointPolyC(a, b), (a, b) -> Ltangent_PointPolyC(a, b), (a, b, c) -> below(a, b, c), (a, b, c) -> below(a, b, c));
     }
 
-    public static BiTangent RRtangent_PolyPolyC(Point[] V, Point[] W) {
+    public static BiTangent RRtangent_PolyPolyC(List<Point> V, List<Point> W) {
         return tangent_PolyPolyC(V, W, (a, b) -> Rtangent_PointPolyC(a, b), (a, b) -> Rtangent_PointPolyC(a, b), (a, b, c) -> above(a, b, c), (a, b, c) -> above(a, b, c));
     }
 
 
-    public static List<Point> intersects(final LineSegment l, final Point[] P) {
+    public static List<Point> intersects(final LineSegment l, final List<? extends Point> P) {
         final List<Point> ints = new ArrayList<>();
-        for (int i = 1, n = P.length; i < n; ++i) {
+        for (int i = 1, n = P.size(); i < n; ++i) {
             final Point intersection = Rectangle.lineIntersection(
                 l.x1, l.y1,
                 l.x2, l.y2,
-                P[i - 1].x, P[i - 1].y,
-                P[i].x, P[i].y
+                P.get(i - 1).x, P.get(i - 1).y,
+                P.get(i).x, P.get(i).y
                 );
             if (null != intersection) {
                 ints.add(intersection);
@@ -343,17 +342,17 @@ public class Geom {
         return ints;
     }
 
-    public static BiTangents tangents(Point[] V, Point[] W) {
-        int m = V.length - 1, n = W.length - 1;
+    public static BiTangents tangents(List<? extends Point> V, List<? extends Point> W) {
+        int m = V.size() - 1, n = W.size() - 1;
         BiTangents bt = new BiTangents();
         for (int i = 0; i < m; ++i) {
             for (int j = 0; j < n; ++j) {
-                Point v1 = V[i == 0 ? m - 1 : i - 1];
-                Point v2 = V[i];
-                Point v3 = V[i + 1];
-                Point w1 = W[j == 0 ? n - 1 : j - 1];
-                Point w2 = W[j];
-                Point w3 = W[j + 1];
+                Point v1 = V.get(i == 0 ? m - 1 : i - 1);
+                Point v2 = V.get(i);
+                Point v3 = V.get(i + 1);
+                Point w1 = W.get(j == 0 ? n - 1 : j - 1);
+                Point w2 = W.get(j);
+                Point w3 = W.get(j + 1);
                 double v1v2w2 = isLeft(v1, v2, w2);
                 double v2w1w2 = isLeft(v2, w1, w2);
                 double v2w2w3 = isLeft(v2, w2, w3);
@@ -378,29 +377,29 @@ public class Geom {
         return bt;
     }
 
-    public static boolean isPointInsidePoly(Point p, Point[] poly) {
-        for (int i = 1, n = poly.length; i < n; ++i) {
-            if (below(poly[i - 1], poly[i], p)) {
+    public static boolean isPointInsidePoly(Point p, List<Point> poly) {
+        for (int i = 1, n = poly.size(); i < n; ++i) {
+            if (below(poly.get(i - 1), poly.get(i), p)) {
                 return false;
             }
         }
         return true;
     }
 
-    public static boolean isAnyPInQ(final Point[] p, final Point[] q) {
-        return !Arrays.stream(p).allMatch(v -> !isPointInsidePoly(v, q));
+    public static boolean isAnyPInQ(final List<Point> p, final List<Point> q) {
+        return !p.stream().allMatch(v -> !isPointInsidePoly(v, q));
     }
 
-    public static boolean polysOverlap(Point[] p, Point[] q) {
+    public static boolean polysOverlap(List<Point> p, List<Point> q) {
         if (isAnyPInQ(p, q)) {
             return true;
         }
         if (isAnyPInQ(q, p)) {
             return true;
         }
-        for (int i = 1, n = p.length; i < n; ++i) {
-            Point v = p[i], u = p[i - 1];
-            if (intersects(new LineSegment(u.x, u.y, v.x, v.y), q).size() > 0) {
+        for (int i = 1, n = p.size(); i < n; ++i) {
+            final Point v = p.get(i), u = p.get(i - 1);
+            if (0 < intersects(new LineSegment(u.x, u.y, v.x, v.y), q).size()) {
                 return true;
             }
         }

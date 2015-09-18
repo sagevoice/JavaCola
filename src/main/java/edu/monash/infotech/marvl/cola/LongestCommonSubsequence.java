@@ -41,7 +41,7 @@ public class LongestCommonSubsequence<T> extends Match {
         for (int i = 0; i < m; i++) {
             l[i] = new int[n];
             for (int j = 0; j < n; j++) {
-                if (s.get(i) == t.get(j)) {
+                if (s.get(i).equals(t.get(j))) {
                     final int v = (0 == i || 0 == j) ? 1 : l[i - 1][j - 1] + 1;
                     l[i][j] = v;
                     if (v > match.length) {

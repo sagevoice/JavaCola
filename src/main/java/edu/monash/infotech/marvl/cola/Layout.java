@@ -695,12 +695,13 @@ public class Layout {
         final Stream<Point[]> stream = this._nodes.stream().map((v) -> {
             return v.bounds.inflate(-nodeMargin).vertices();
         });
-        final Stream<TVGPoint[]> stream2 = stream.map(pointArray -> {
-            return Arrays.stream(pointArray).map(p -> {
+        final Stream<List<TVGPoint>> stream2 = stream.map(pointArray -> {
+            final List<TVGPoint> tvgPoints = Arrays.stream(pointArray).map(p -> {
                 return new TVGPoint(p.x, p.y);
-            }).collect(Collectors.toList()).toArray(new TVGPoint[1]);
+            }).collect(Collectors.toList());
+            return tvgPoints;
         });
-        final TVGPoint[][] P = stream2.collect(Collectors.toList()).toArray(new TVGPoint[n][1]);
+        final List<List<TVGPoint>> P = stream2.collect(Collectors.toList());
         this._visibilityGraph = new TangentVisibilityGraph(P);
     }
 
