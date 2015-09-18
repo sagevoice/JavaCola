@@ -625,23 +625,23 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-   /*
     @Test(description="tangents")
     public void tangentsTest() {
-        PseudoRandom rand = new PseudoRandom();
-        var rect = [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 10, y: 20 }, { x: 20, y: 20 }];
-        var pnt = [{ x: 0, y: 0 }];
-        var t1 = Geom.tangents(pnt, rect);
-        for (var j = 0; j < 100; j++) {
-            var A = makePoly(rand), B = makePoly(rand);
-            B.forEach((p) -> { p.x += 11 });
+        final PseudoRandom rand = new PseudoRandom();
+        final List<Point> rect = Arrays.asList(new Point(10, 10), new Point(20, 10), new Point(10, 20), new Point(20, 20));
+        final List<Point> pnt = Arrays.asList(new Point(0, 0));
+        final BiTangents t1 = Geom.tangents(pnt, rect);
+        for (int j = 0; j < 100; j++) {
+            final List<TVGPoint> A = Poly.makePoly(rand), B = Poly.makePoly(rand);
+            B.forEach((p) -> { p.x += 11; });
             //if (j !== 207) continue;
-            var t = Geom.tangents(A, B);
+            final BiTangents t = Geom.tangents(A, B);
             // ok(t.length === 4, t.length + " tangents found at j="+j);
         }
         Assert.assertTrue(true);
     }
 
+   /*
     function intersects(l, P) {
         var ints = [];
         for (var i = 1; i < P.length; ++i) {
