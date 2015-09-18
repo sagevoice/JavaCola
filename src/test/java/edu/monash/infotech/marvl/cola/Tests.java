@@ -641,38 +641,24 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-   /*
-    function intersects(l, P) {
-        var ints = [];
-        for (var i = 1; i < P.length; ++i) {
-            var int = Rectangle.lineIntersection(
-                l.x1, l.y1,
-                l.x2, l.y2,
-                P[i-1].x, P[i-1].y,
-                P[i].x, P[i].y
-                );
-            if (int) ints.push(int);
-        }
-        return ints;
-    }
-
     @Test(description="pseudo random number test")
     public void pseudoRandomNumberTest() {
-        PseudoRandom rand = new PseudoRandom();
-        for (var i = 0; i < 100; ++i) {
-            var r = rand.getNext();
-            Assert.assertTrue(r <= 1, "r=" + r);
-            Assert.assertTrue(r >= 0, "r=" + r);
+        final PseudoRandom rand = new PseudoRandom();
+        for (int i = 0; i < 100; ++i) {
+            double r = rand.getNext();
+            Assert.assertTrue(1 >= r, "r=" + r);
+            Assert.assertTrue(0 <= r, "r=" + r);
             r = rand.getNextBetween(5, 10);
-            Assert.assertTrue(r <= 10, "r=" + r);
-            Assert.assertTrue(r >= 5, "r=" + r);
+            Assert.assertTrue(10 >= r, "r=" + r);
+            Assert.assertTrue(5 <= r, "r=" + r);
             r = rand.getNextBetween(-5, 0);
-            Assert.assertTrue(r <= 0, "r=" + r);
-            Assert.assertTrue(r >= -5, "r=" + r);
+            Assert.assertTrue(0 >= r, "r=" + r);
+            Assert.assertTrue(-5 <= r, "r=" + r);
             //console.log(r);
         }
     }
 
+   /*
     @Test(description="rectangle intersections")
     public void rectangleIntersectionsTest() {
         var r = new Rectangle(2, 4, 0, 2);
