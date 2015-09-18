@@ -658,17 +658,17 @@ public class Tests {
         }
     }
 
-   /*
     @Test(description="rectangle intersections")
     public void rectangleIntersectionsTest() {
-        var r = new Rectangle(2, 4, 0, 2);
-        var p = r.rayIntersection(0, 1);
-        Assert.assertTrue(p.x == 2);
-        Assert.assertTrue(p.y == 1);
+        final Rectangle r = new Rectangle(2, 4, 0, 2);
+        Point p = r.rayIntersection(0, 1);
+        Assert.assertEquals(p.x, 2.0);
+        Assert.assertEquals(p.y, 1.0);
         p = r.rayIntersection(0, 0);
-        Assert.assertTrue(p.x == 2);
+        Assert.assertEquals(p.x, 2.0);
     }
 
+   /*
     @Test(description="matrix perf test")
     public void matrixPerfTest() {
         Assert.assertTrue(true); return; // disable
