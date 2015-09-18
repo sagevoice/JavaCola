@@ -158,31 +158,42 @@ public class Tests {
         }
         Assert.assertTrue(true);
     }
- /*
 
     @Test(description="edge lengths")
     public void edgeLengthsTest () {
         LayoutAdaptor d3cola = CoLa.adaptor();
 
-        d3.json("../examples/graphdata/triangle.json", function (error, graph) {
-            var length = function (l) {
+        try (final InputStream stream = getClass().getResourceAsStream("/triangle.json")) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final MapType type = mapper.getTypeFactory().constructMapType(
+                Map.class, String.class, Object.class);
+            final Map<String, Object> graph = mapper.readValue(stream, type);
+            List<Link> links = mapJsonArrayToLinkList((List<Map<String, Object>>)graph.get("links"));
+            List<GraphNode> nodes = mapJsonArrayToNodeList((List<Map<String, Object>>)graph.get("nodes"));
+
+            final ToDoubleFunction<Link> length = (l) -> {
                 return Layout.linkId(l) == "2-3" ? 2 : 1;
-            }
+            };
             d3cola
                 .linkDistance(length)
-                .nodes(graph.nodes)
-                .links(graph.links);
+                .nodes(nodes)
+                .links(links);
             d3cola.start(100);
-            var errors = graph.links.map((e) -> {
-                var l = nodeDistance(e.source, e.target);
-                return Math.abs(l - length(e));
-            }), max = Math.max.apply(this, errors);
+            List<Double> errors = d3cola.links().stream().map((e) -> {
+                double l = nodeDistance((GraphNode)e.source, (GraphNode)e.target);
+                return Math.abs(l - length.applyAsDouble(e));
+            }).collect(Collectors.toList());
+            Function<List<Double>, Double> listMax = (a) -> { return a.stream().reduce( new Double(0), (u, v) -> { return Math.max(u, v); }); };
+            double max = listMax.apply(errors);
             Assert.assertTrue(max < 0.1, "max = " + max);
-            start();
-        });
+        } catch (IOException e) {
+            log.error("IOException in edgeLengthsTest", e);
+            throw new RuntimeException(e);
+        }
         Assert.assertTrue(true);
     }
 
+ /*
     @Test(description="group")
     public void groupTest () {
         LayoutAdaptor d3cola = CoLa.adaptor();
