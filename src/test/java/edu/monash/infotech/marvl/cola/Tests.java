@@ -817,43 +817,78 @@ public class Tests {
         });
     }
 
-    /*
-    @Test(description="vpsc")
+    @Test(description = "vpsc")
     public void vpscTest() {
-        var round = function (v, p) {
-            var m = Math.pow(10, p);
+        final BiFunction<Double, Integer, Double> round = (v, p) -> {
+            final double m = Math.pow(10, p);
             return Math.round(v * m) / m;
         };
-        var rnd = function (a, p) {
-            if (typeof p === "undefined") { p = 4; }
-            return a.map(function (v) { return round(v, p) })
+        final BiFunction<List<Double>, Integer, List<Double>> rnd = (a, p) -> {
+            return a.stream().map((v) -> { return round.apply(v, p); }).collect(Collectors.toList());
         };
-        var res = function (a, p) {
-            if (typeof p === "undefined") { p = 4; }
-            return a.map(function (v) { return round(v.position(), p) })
+        final BiFunction<List<Variable>, Integer, List<Double>> res = (a, p) -> {
+            return a.stream().map((v) -> { return round.apply(v.position(), p); }).collect(Collectors.toList());
         };
-        vpsctestcases.forEach(function (t) {
-            var vs = t.variables.map(function (u, i) {
-                var v;
-                if (typeof u === "number") {
-                    v = new Variable(u);
+
+        try (final InputStream stream = getClass().getResourceAsStream("/vpsctests.json")) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final JsonNode graph = mapper.readTree(stream);
+            final JsonNode jsonNodes = graph.get("vpsctestcases");
+            for (final JsonNode jsonNode : jsonNodes) {
+                final List<Variable> vs;
+                final List<Constraint> cs;
+                final JsonNode variables = jsonNode.get("variables");
+                if (null != variables) {
+                    vs = new ArrayList<>(variables.size());
+                    for (final JsonNode var : variables) {
+                        final Variable v;
+                        if (var.isInt()) {
+                            v = new Variable(var.asInt());
+                        } else {
+                            v = new Variable(var.get("desiredPosition").asDouble(),
+                                             var.path("weight").asDouble(1.0),
+                                             var.path("scale").asDouble(1.0));
+                        }
+                        vs.add(v);
+                    }
                 } else {
-                    v = new Variable(u.desiredPosition, u.weight, u.scale);
+                    vs = new ArrayList<>();
                 }
-                v.id = i;
-                return v;
-            });
-            var cs = t.constraints.map(function (c) {
-                return new Constraint(vs[c.left], vs[c.right], c.gap);
-            });
-            var solver = new Solver(vs, cs);
-            solver.solve();
-            if (typeof t.expected !== "undefined") {
-                deepEqual(rnd(t.expected, t.precision), res(vs, t.precision), t.description);
+                final JsonNode constraints = jsonNode.get("constraints");
+                if (null != constraints) {
+                    cs = new ArrayList<>(constraints.size());
+                    for (final JsonNode con : constraints) {
+                        final Constraint c;
+                        c = new Constraint(vs.get(con.get("left").asInt()),
+                                           vs.get(con.get("right").asInt()),
+                                           con.get("gap").asDouble());
+                        cs.add(c);
+                    }
+                } else {
+                    cs = new ArrayList<>();
+                }
+                final Solver solver = new Solver(vs, cs);
+                solver.solve();
+                final JsonNode expected = jsonNode.get("expected");
+                if (null != expected) {
+                    final int precision = jsonNode.path("precision").asInt(4);
+                    final String description = jsonNode.path("description").asText();
+                    final List<Double> ex = new ArrayList<>(expected.size());
+                    for (final JsonNode e : expected) {
+                        if (e.isNumber()) {
+                            ex.add(e.asDouble());
+                        }
+                    }
+                    Assert.assertEquals(rnd.apply(ex, precision), res.apply(vs, precision), description);
+                }
             }
-        });
+        } catch (IOException e) {
+            log.error("IOException in vpscTest", e);
+            throw new RuntimeException(e);
+        }
     }
 
+    /*
     @Test(description="rbtree")
     public void rbtreeTest() {
         var tree = new RBTree<Integer>( (a, b) -> { return a - b; });

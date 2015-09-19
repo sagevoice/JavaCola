@@ -68,13 +68,21 @@ public class Blocks {
     // split each block across its constraint with the minimum lagrangian
     public void split(final List<Constraint> inactive) {
         this.updateBlockPositions();
-        this.list.forEach(b -> {
-            final Constraint v = b.findMinLM();
-            if (null != v && v.lm < Solver.LAGRANGIAN_TOLERANCE) {
-                b = v.left.block;
-                Arrays.stream(Block.split(v)).forEach(nb -> this.insert(nb));
-                this.remove(b);
-                inactive.add(v);
+        // Make a copy of the list to avoid ConcurrentModificationException.
+        // The code below will modify this.list throughout the iteration.
+        // Making a copy of the list matches the JavaScript implementation -
+        // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
+        final List<Block> listCopy = new ArrayList<>(this.list);
+        listCopy.forEach(b -> {
+            // also need to check that b has not been removed from this.list
+            if (0 <= this.list.indexOf(b)) {
+                final Constraint v = b.findMinLM();
+                if (null != v && Solver.LAGRANGIAN_TOLERANCE > v.lm) {
+                    b = v.left.block;
+                    Arrays.stream(Block.split(v)).forEach(nb -> this.insert(nb));
+                    this.remove(b);
+                    inactive.add(v);
+                }
             }
         });
     }
