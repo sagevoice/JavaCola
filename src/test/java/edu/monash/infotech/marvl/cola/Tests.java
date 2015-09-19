@@ -17,6 +17,9 @@ import org.testng.annotations.*;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.Collectors;
@@ -668,92 +671,100 @@ public class Tests {
         Assert.assertEquals(p.x, 2.0);
     }
 
-   /*
     @Test(description="matrix perf test")
     public void matrixPerfTest() {
-        Assert.assertTrue(true); return; // disable
+        Assert.assertTrue(true);// return; // disable
 
-        var now = window.performance ? function () { return window.performance.now(); } : function () { };
-        console.log("Array test:");
-        var startTime = now();
-        var totalRegularArrayTime = 0;
-        var repeats = 1000;
-        var n = 100;
-        var M;
-        for (var k = 0; k < repeats; ++k) {
-            M = new Array(n);
-            for (var i = 0; i < n; ++i) {
-                M[i] = new Array(n);
-            }
-        }
-
-        var t = now() - startTime;
-        console.log("init = " + t);
-        totalRegularArrayTime += t;
-        startTime = now();
-        for (var k = 0; k < repeats; ++k) {
-            for (var i = 0; i < n; ++i) {
-                for (var j = 0; j < n; ++j) {
-                    M[i][j] = 1;
+        log.warn("Array test:");
+        Instant startTime = Instant.now();
+        Duration totalRegularArrayTime = Duration.ofNanos(0);
+        final int repeats = 1000;
+        final int n = 100;
+        List<List<Double>> M = new ArrayList<>(n);
+        for (int k = 0; k < repeats; ++k) {
+            M = new ArrayList<>(n);
+            for (int i = 0; i < n; ++i) {
+                M.add(new ArrayList<>(n));
+                for (int j = 0; j < n; ++j) {
+                    M.get(i).add(0.0);
                 }
             }
         }
 
-        var t = now() - startTime;
-        console.log("write array = " + t);
-        totalRegularArrayTime += t;
-        startTime = now();
-        for (var k = 0; k < repeats; ++k) {
-            var sum = 0;
-            for (var i = 0; i < n; ++i) {
-                for (var j = 0; j < n; ++j) {
-                    sum += M[i][j];
+        long t = ChronoUnit.MILLIS.between(startTime, Instant.now());
+        log.warn("init = " + t);
+        totalRegularArrayTime = totalRegularArrayTime.plus(t, ChronoUnit.MILLIS);
+        startTime = Instant.now();
+        for (int k = 0; k < repeats; ++k) {
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < n; ++j) {
+                    M.get(i).set(j, 1.0);
+                }
+            }
+        }
+
+        t = ChronoUnit.MILLIS.between(startTime, Instant.now());
+        log.warn("write array = " + t);
+        totalRegularArrayTime = totalRegularArrayTime.plus(t, ChronoUnit.MILLIS);
+        startTime = Instant.now();
+        for (int k = 0; k < repeats; ++k) {
+            double sum = 0;
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < n; ++j) {
+                    sum += M.get(i).get(j);
                 }
             }
             //Assert.assertEquals(sum, n * n);
         }
-        var t = now() - startTime;
-        console.log("read array = " + t);
-        totalRegularArrayTime += t;
-        startTime = now();
+        t = ChronoUnit.MILLIS.between(startTime, Instant.now());
+        log.warn("read array = " + t);
+        totalRegularArrayTime = totalRegularArrayTime.plus(t, ChronoUnit.MILLIS);
         Assert.assertTrue(true);
 
-        var totalTypedArrayTime = 0;
-        console.log("Typed Array test:");
-        var startTime = now();
-        for (var k = 0; k < repeats; ++k) {
-            MT = new Float32Array(n * n);
-        }
-
-        var t = now() - startTime;
-        console.log("init = " + t);
-        totalTypedArrayTime += t;
-        startTime = now();
-        for (var k = 0; k < repeats; ++k) {
-            for (var i = 0; i < n * n; ++i) {
-                MT[i] = 1;
+        Duration totalTypedArrayTime = Duration.ofNanos(0);
+        log.warn("Typed Array test:");
+        startTime = Instant.now();
+        double[][] MT = new double[n][0];
+        for (int k = 0; k < repeats; ++k) {
+            MT = new double[n][0];
+            for (int i = 0; i < n; ++i) {
+                MT[i] = new double[n];
             }
         }
-        var t = now() - startTime;
-        console.log("write array = " + t);
-        totalTypedArrayTime += t;
-        startTime = now();
-        for (var k = 0; k < repeats; ++k) {
-            var sum = 0;
-            for (var i = 0; i < n * n; ++i) {
-                sum += MT[i];
+
+        t = ChronoUnit.MILLIS.between(startTime, Instant.now());
+        log.warn("init = " + t);
+        totalTypedArrayTime = totalTypedArrayTime.plus(t, ChronoUnit.MILLIS);
+        startTime = Instant.now();
+        for (int k = 0; k < repeats; ++k) {
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < n; ++j) {
+                    MT[i][j] = 1.0;
+                }
+            }
+        }
+        t = ChronoUnit.MILLIS.between(startTime, Instant.now());
+        log.warn("write array = " + t);
+        totalTypedArrayTime = totalTypedArrayTime.plus(t, ChronoUnit.MILLIS);
+        startTime = Instant.now();
+        for (int k = 0; k < repeats; ++k) {
+            double sum = 0;
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < n; ++j) {
+                    sum += MT[i][j];
+                }
             }
             //Assert.assertEquals(sum, n * n);
         }
-        var t = now() - startTime;
-        console.log("read array = " + t);
-        totalTypedArrayTime += t;
-        startTime = now();
-        Assert.assertTrue(isNaN(totalRegularArrayTime) || totalRegularArrayTime < totalTypedArrayTime,
-                          "totalRegularArrayTime=" + totalRegularArrayTime + " totalTypedArrayTime=" + totalTypedArrayTime
+        t = ChronoUnit.MILLIS.between(startTime, Instant.now());
+        log.warn("read array = " + t);
+        totalTypedArrayTime = totalTypedArrayTime.plus(t, ChronoUnit.MILLIS);
+        Assert.assertTrue(0 < totalRegularArrayTime.compareTo(totalTypedArrayTime),
+                          "totalRegularArrayTime=" + totalRegularArrayTime.toString() + " totalTypedArrayTime=" + totalTypedArrayTime.toString()
                           + " - if this consistently fails then maybe we should switch to typed arrays");
     }
 
+   /*
     @Test(description="priority queue test")
     public void priorityQueueTest() {
         var q = new PriorityQueue((a, b) -> { return a <= b; });
