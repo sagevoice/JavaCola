@@ -11,6 +11,7 @@ import edu.monash.infotech.marvl.cola.powergraph.PowerEdge;
 import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
 import edu.monash.infotech.marvl.cola.vpsc.*;
 
+import edu.monash.infotech.marvl.cola.vpsc.Iterator;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 import org.testng.annotations.*;
@@ -888,24 +889,27 @@ public class Tests {
         }
     }
 
-    /*
     @Test(description="rbtree")
     public void rbtreeTest() {
-        var tree = new RBTree<Integer>( (a, b) -> { return a - b; });
-        var data = [5, 8, 3, 1, 7, 6, 2];
-        data.forEach(function (d) { tree.insert(d); });
-        var it = tree.iterator(), item;
-        var prev = 0;
-        while ((item = it.next()) !== null) {
+        final RBTree<Integer> tree = new RBTree<>( (a, b) -> { return a - b; });
+        final List<Integer> data = Arrays.asList(5, 8, 3, 1, 7, 6, 2);
+        data.forEach((d) -> { tree.insert(d); });
+        final Iterator<Integer> it = tree.iterator();
+        Integer item;
+        Integer prev = 0;
+        while (null != (item = it.next())) {
             Assert.assertTrue(prev < item);
             prev = item;
         }
 
-        var m = tree.findIter(5);
-        Assert.assertTrue(m.prev(3));
-        Assert.assertTrue(m.next(6));
+        final Iterator<Integer> m = tree.findIter(5);
+        Assert.assertEquals(m.data(), Integer.valueOf(5));
+        Assert.assertEquals(m.prev(), Integer.valueOf(3));
+        m.next(); //advance forward once (to item 5) to undo the m.prev() above
+        Assert.assertEquals(m.next(), Integer.valueOf(6));
     }
 
+    /*
     @Test(description="overlap removal")
     public void overlapRemovalTest() {
         var rs = [

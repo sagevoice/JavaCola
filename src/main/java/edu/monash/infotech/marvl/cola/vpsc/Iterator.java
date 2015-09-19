@@ -44,7 +44,7 @@ public class Iterator<T> {
 
     // if null-iterator, returns first node
     // otherwise, returns next node
-    T next() {
+    public T next() {
         if (null == this._cursor) {
             RBNode<T> root = this._tree._root;
             if (null != root) {

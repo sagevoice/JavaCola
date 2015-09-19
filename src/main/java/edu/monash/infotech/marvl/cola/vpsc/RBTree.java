@@ -28,7 +28,7 @@ import java.util.Comparator;
 
 public class RBTree<T> extends TreeBase<T> {
 
-    RBTree(final Comparator<T> comparator) {
+    public RBTree(final Comparator<T> comparator) {
         super(comparator);
     }
 
