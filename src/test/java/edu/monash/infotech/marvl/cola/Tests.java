@@ -889,9 +889,9 @@ public class Tests {
         }
     }
 
-    @Test(description="rbtree")
+    @Test(description = "rbtree")
     public void rbtreeTest() {
-        final RBTree<Integer> tree = new RBTree<>( (a, b) -> { return a - b; });
+        final RBTree<Integer> tree = new RBTree<>((a, b) -> { return a - b; });
         final List<Integer> data = Arrays.asList(5, 8, 3, 1, 7, 6, 2);
         data.forEach((d) -> { tree.insert(d); });
         final Iterator<Integer> it = tree.iterator();
@@ -909,35 +909,36 @@ public class Tests {
         Assert.assertEquals(m.next(), Integer.valueOf(6));
     }
 
-    /*
-    @Test(description="overlap removal")
+    @Test(description = "overlap removal")
     public void overlapRemovalTest() {
-        var rs = [
-            new Rectangle(0, 2, 0, 1),
-            new Rectangle(1, 3, 0, 1)
-        ];
-        Assert.assertEquals(rs[0].overlapX(rs[1]), 1);
-        Assert.assertEquals(rs[0].overlapY(rs[1]), 1);
-        var vs = rs.map((r) -> {
+        List<Rectangle> rs = Arrays.asList(
+                new Rectangle(0, 2, 0, 1),
+                new Rectangle(1, 3, 0, 1)
+        );
+        Assert.assertEquals(rs.get(0).overlapX(rs.get(1)), 1.0);
+        Assert.assertEquals(rs.get(0).overlapY(rs.get(1)), 1.0);
+        List<Variable> vs = rs.stream().map((r) -> {
             return new Variable(r.cx());
-        });
-        var cs = VPSC.generateXConstraints(rs, vs);
-        Assert.assertEquals(cs.length, 1);
-        Solver solver = new Solver(vs, cs);
+        }).collect(Collectors.toList());
+        List<Constraint> cs = VPSC.generateXConstraints(rs, vs);
+        Assert.assertEquals(cs.size(), 1);
+        final Solver solver = new Solver(vs, cs);
         solver.solve();
-        vs.forEach((v, i) -> {
-            rs[i].setXCentre(v.position());
-        });
-        Assert.assertEquals(rs[0].overlapX(rs[1]), 0);
-        Assert.assertEquals(rs[0].overlapY(rs[1]), 1);
+        for (int i = 0; i < vs.size(); i++) {
+            final Variable v = vs.get(i);
+            rs.get(i).setXCentre(v.position());
+        }
+        Assert.assertEquals(rs.get(0).overlapX(rs.get(1)), 0.0);
+        Assert.assertEquals(rs.get(0).overlapY(rs.get(1)), 1.0);
 
-        vs = rs.map( (r) -> {
+        vs = rs.stream().map((r) -> {
             return new Variable(r.cy());
-        });
+        }).collect(Collectors.toList());
         cs = VPSC.generateYConstraints(rs, vs);
-        Assert.assertEquals(cs.length, 0);
+        Assert.assertEquals(cs.size(), 0);
     }
 
+        /*
     private int overlaps(final Rectangle[] rs) {
         var cnt = 0;
         for (var i = 0, n = rs.length; i < n - 1; ++i) {

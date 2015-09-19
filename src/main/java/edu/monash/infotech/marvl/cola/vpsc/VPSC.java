@@ -173,9 +173,8 @@ public class VPSC {
         }
 
         final int n = (isContained ? 2 : 0) + ln + gn;
-        final Rectangle[] rs = new Rectangle[n];
+        final List<Rectangle> rs = new ArrayList<>(n);
         final List<Variable> vs = new ArrayList<>(n);
-        int i = 0;
         if (isContained) {
             // if this group is contained by another, then we add two dummy vars and rectangles for the borders
             final Rectangle b = root.bounds;
@@ -183,21 +182,21 @@ public class VPSC {
                     open = f.getOpen(b), close = f.getClose(b),
                     min = c - s + padding / 2, max = c + s - padding / 2;
             root.minVar.desiredPosition = min;
-            rs[i++] = f.makeRect(open, close, min, padding);
+            rs.add(f.makeRect(open, close, min, padding));
             vs.add(root.minVar);
             root.maxVar.desiredPosition = max;
-            rs[i++] = f.makeRect(open, close, max, padding);
+            rs.add(f.makeRect(open, close, max, padding));
             vs.add(root.maxVar);
         }
         for (int j = 0; j < ln; j++) {
             final GraphNode l = root.leaves.get(j);
-            rs[i++] = l.bounds;
+            rs.add(l.bounds);
             vs.add(l.variable);
         }
         for (int j = 0; j < gn; j++) {
             final Group g = root.groups.get(j);
             final Rectangle b = g.bounds;
-            rs[i++] = f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b));
+            rs.add(f.makeRect(f.getOpen(b), f.getClose(b), f.getCentre(b), f.getSize(b)));
             vs.add(g.minVar);
         }
         final List<Constraint> cs = generateConstraints(rs, vs, f, minSep);
@@ -225,15 +224,15 @@ public class VPSC {
         return childConstraints;
     }
 
-    public static List<Constraint> generateConstraints(final Rectangle[] rs, final List<Variable> vars, final RectAccessors rect,
+    public static List<Constraint> generateConstraints(final List<Rectangle> rs, final List<Variable> vars, final RectAccessors rect,
                                                             final double minSep)
     {
         int i;
-        final int n = rs.length;
+        final int n = rs.size();
         final int N = 2 * n;
         Event[] events = new Event[N];
         for (i = 0; i < n; ++i) {
-            final Rectangle r = rs[i];
+            final Rectangle r = rs.get(i);
             final Node v = new Node(vars.get(i), r, rect.getCentre(r));
             events[i] = new Event(true, v, rect.getOpen(r));
             events[i + n] = new Event(false, v, rect.getClose(r));
@@ -282,7 +281,7 @@ public class VPSC {
     public static void findXNeighbours(final Node v, final RBTree<Node> scanline) {
         Iterator<Node> it = scanline.findIter(v);
         Node u;
-        while ((u = it.next()) != null) {
+        while (null != (u = it.next())) {
             final double uovervX = u.r.overlapX(v.r);
             if (0 >= uovervX || uovervX <= u.r.overlapY(v.r)) {
                 v.next.insert(u);
@@ -294,7 +293,7 @@ public class VPSC {
         }
 
         it = scanline.findIter(v);
-        while ((u = it.prev()) != null) {
+        while (null != (u = it.prev())) {
             final double uovervX = u.r.overlapX(v.r);
             if (0 >= uovervX || uovervX <= u.r.overlapY(v.r)) {
                 v.prev.insert(u);
@@ -321,11 +320,11 @@ public class VPSC {
 
     }
 
-    public static List<Constraint> generateXConstraints(final Rectangle[] rs, final List<Variable> vars) {
+    public static List<Constraint> generateXConstraints(final List<Rectangle> rs, final List<Variable> vars) {
         return generateConstraints(rs, vars, xRect, 1e-6);
     }
 
-    public static List<Constraint> generateYConstraints(final Rectangle[] rs, final List<Variable> vars) {
+    public static List<Constraint> generateYConstraints(final List<Rectangle> rs, final List<Variable> vars) {
         return generateConstraints(rs, vars, yRect, 1e-6);
     }
 
@@ -337,20 +336,20 @@ public class VPSC {
         return generateGroupConstraints(root, yRect, 1e-6);
     }
 
-    public static void removeOverlaps(final Rectangle[] rs) {
-        List<Variable> vs = Arrays.stream(rs).map(r -> new Variable(r.cx())).collect(Collectors.toList());
+    public static void removeOverlaps(final List<Rectangle> rs) {
+        List<Variable> vs = rs.stream().map(r -> new Variable(r.cx())).collect(Collectors.toList());
         List<Constraint> cs = VPSC.generateXConstraints(rs, vs);
         Solver solver = new Solver(vs, cs);
         solver.solve();
         for (int i = 0; i < vs.size(); i++) {
-            rs[i].setXCentre(vs.get(i).position());
+            rs.get(i).setXCentre(vs.get(i).position());
         }
-        vs = Arrays.stream(rs).map(r -> new Variable(r.cy())).collect(Collectors.toList());
+        vs = rs.stream().map(r -> new Variable(r.cy())).collect(Collectors.toList());
         cs = VPSC.generateYConstraints(rs, vs);
         solver = new Solver(vs, cs);
         solver.solve();
         for (int i = 0; i < vs.size(); i++) {
-            rs[i].setYCentre(vs.get(i).position());
+            rs.get(i).setYCentre(vs.get(i).position());
         }
     }
 
