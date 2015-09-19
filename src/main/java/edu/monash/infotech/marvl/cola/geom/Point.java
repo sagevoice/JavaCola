@@ -16,7 +16,7 @@ public class Point {
         } else if ("y".equals(key)) {
             return this.y;
         }
-        return 0.0;
+        return Double.NaN;
     }
 
     public void set(final String key, final double value) {

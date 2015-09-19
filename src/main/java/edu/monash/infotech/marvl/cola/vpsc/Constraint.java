@@ -1,7 +1,5 @@
 package edu.monash.infotech.marvl.cola.vpsc;
 
-import java.util.List;
-
 public class Constraint {
 
     public double       lm;
