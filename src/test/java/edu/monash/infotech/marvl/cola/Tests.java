@@ -628,7 +628,7 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-    @Test(description="tangents")
+    @Test(description = "tangents")
     public void tangentsTest() {
         final PseudoRandom rand = new PseudoRandom();
         final List<Point> rect = Arrays.asList(new Point(10, 10), new Point(20, 10), new Point(10, 20), new Point(20, 20));
@@ -644,7 +644,7 @@ public class Tests {
         Assert.assertTrue(true);
     }
 
-    @Test(description="pseudo random number test")
+    @Test(description = "pseudo random number test")
     public void pseudoRandomNumberTest() {
         final PseudoRandom rand = new PseudoRandom();
         for (int i = 0; i < 100; ++i) {
@@ -661,7 +661,7 @@ public class Tests {
         }
     }
 
-    @Test(description="rectangle intersections")
+    @Test(description = "rectangle intersections")
     public void rectangleIntersectionsTest() {
         final Rectangle r = new Rectangle(2, 4, 0, 2);
         Point p = r.rayIntersection(0, 1);
@@ -671,11 +671,11 @@ public class Tests {
         Assert.assertEquals(p.x, 2.0);
     }
 
-    @Test(description="matrix perf test")
+    @Test(description = "matrix perf test")
     public void matrixPerfTest() {
         Assert.assertTrue(true);// return; // disable
 
-        log.warn("Array test:");
+        log.debug("Array test:");
         Instant startTime = Instant.now();
         Duration totalRegularArrayTime = Duration.ofNanos(0);
         final int repeats = 1000;
@@ -692,7 +692,7 @@ public class Tests {
         }
 
         long t = ChronoUnit.MILLIS.between(startTime, Instant.now());
-        log.warn("init = " + t);
+        log.debug("init = " + t);
         totalRegularArrayTime = totalRegularArrayTime.plus(t, ChronoUnit.MILLIS);
         startTime = Instant.now();
         for (int k = 0; k < repeats; ++k) {
@@ -704,7 +704,7 @@ public class Tests {
         }
 
         t = ChronoUnit.MILLIS.between(startTime, Instant.now());
-        log.warn("write array = " + t);
+        log.debug("write array = " + t);
         totalRegularArrayTime = totalRegularArrayTime.plus(t, ChronoUnit.MILLIS);
         startTime = Instant.now();
         for (int k = 0; k < repeats; ++k) {
@@ -717,12 +717,12 @@ public class Tests {
             //Assert.assertEquals(sum, n * n);
         }
         t = ChronoUnit.MILLIS.between(startTime, Instant.now());
-        log.warn("read array = " + t);
+        log.debug("read array = " + t);
         totalRegularArrayTime = totalRegularArrayTime.plus(t, ChronoUnit.MILLIS);
         Assert.assertTrue(true);
 
         Duration totalTypedArrayTime = Duration.ofNanos(0);
-        log.warn("Typed Array test:");
+        log.debug("Typed Array test:");
         startTime = Instant.now();
         double[][] MT = new double[n][0];
         for (int k = 0; k < repeats; ++k) {
@@ -733,7 +733,7 @@ public class Tests {
         }
 
         t = ChronoUnit.MILLIS.between(startTime, Instant.now());
-        log.warn("init = " + t);
+        log.debug("init = " + t);
         totalTypedArrayTime = totalTypedArrayTime.plus(t, ChronoUnit.MILLIS);
         startTime = Instant.now();
         for (int k = 0; k < repeats; ++k) {
@@ -744,7 +744,7 @@ public class Tests {
             }
         }
         t = ChronoUnit.MILLIS.between(startTime, Instant.now());
-        log.warn("write array = " + t);
+        log.debug("write array = " + t);
         totalTypedArrayTime = totalTypedArrayTime.plus(t, ChronoUnit.MILLIS);
         startTime = Instant.now();
         for (int k = 0; k < repeats; ++k) {
@@ -757,14 +757,15 @@ public class Tests {
             //Assert.assertEquals(sum, n * n);
         }
         t = ChronoUnit.MILLIS.between(startTime, Instant.now());
-        log.warn("read array = " + t);
+        log.debug("read array = " + t);
         totalTypedArrayTime = totalTypedArrayTime.plus(t, ChronoUnit.MILLIS);
         Assert.assertTrue(0 < totalRegularArrayTime.compareTo(totalTypedArrayTime),
-                          "totalRegularArrayTime=" + totalRegularArrayTime.toString() + " totalTypedArrayTime=" + totalTypedArrayTime.toString()
+                          "totalRegularArrayTime=" + totalRegularArrayTime.toString() + " totalTypedArrayTime=" + totalTypedArrayTime
+                                  .toString()
                           + " - if this consistently fails then maybe we should switch to typed arrays");
     }
 
-    @Test(description="priority queue test")
+    @Test(description = "priority queue test")
     public void priorityQueueTest() {
         PriorityQueue<Double> q = new PriorityQueue<>((a, b) -> { return a <= b; });
         q.push(42.0, 5.0, 23.0, 5.0, Math.PI);
@@ -793,28 +794,30 @@ public class Tests {
         Assert.assertEquals(cnt, 6);
     }
 
-    /*
-    @Test(description="dijkstra")
+    @Test(description = "dijkstra")
     public void dijkstraTest() {
         // 0  4-3
         //  \/ /
         //  1-2
-        var n = 5;
-        var links = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 1]],
-            getSource = function (l) { return l[0] }, getTarget = function (l) { return l[1] }, getLength = function(l) { return 1 }
-        var calc = new Calculator(n, links, getSource, getTarget, getLength);
-        var d = calc.DistancesFromNode(0);
-        deepEqual(d, [0, 1, 2, 3, 2]);
-        var D = calc.DistanceMatrix();
-        deepEqual(D, [
-            [0, 1, 2, 3, 2],
-            [1, 0, 1, 2, 1],
-            [2, 1, 0, 1, 2],
-            [3, 2, 1, 0, 1],
-            [2, 1, 2, 1, 0]
-        ]);
+        final int n = 5;
+        final List<int[]> links = Arrays.asList(new int[] {0, 1}, new int[] {1, 2}, new int[] {2, 3}, new int[] {3, 4}, new int[] {4, 1});
+        final ToIntFunction<int[]> getSource = (l) -> { return l[0]; };
+        final ToIntFunction<int[]> getTarget = (l) -> { return l[1]; };
+        final ToDoubleFunction<int[]> getLength = (l) -> { return 1.0; };
+        final Calculator<int[]> calc = new Calculator<>(n, links, getSource, getTarget, getLength);
+        final double[] d = calc.DistancesFromNode(0);
+        Assert.assertEquals(d, new double[] {0, 1, 2, 3, 2});
+        final double[][] D = calc.DistanceMatrix();
+        Assert.assertEquals(D, new double[][] {
+                {0, 1, 2, 3, 2},
+                {1, 0, 1, 2, 1},
+                {2, 1, 0, 1, 2},
+                {3, 2, 1, 0, 1},
+                {2, 1, 2, 1, 0}
+        });
     }
 
+    /*
     @Test(description="vpsc")
     public void vpscTest() {
         var round = function (v, p) {
