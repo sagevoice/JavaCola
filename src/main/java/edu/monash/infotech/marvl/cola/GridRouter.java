@@ -26,8 +26,6 @@ public class GridRouter<T> {
     public List<NodeWrapper> backToFront;
     public List<NodeWrapper> obstacles;
     public List<LinkWrapper> passableEdges;
-    public List<T>           originalnodes;
-    public NodeAccessor<T>   accessor;
     public double            groupPadding;
 
     public GridRouter(final List<T> originalnodes, final NodeAccessor<T> accessor) {
@@ -35,9 +33,6 @@ public class GridRouter<T> {
     }
 
     public GridRouter(final List<T> originalnodes, final NodeAccessor<T> accessor, final double groupPadding) {
-        //noinspection AssignmentToCollectionOrArrayFieldFromParameter
-        this.originalnodes = originalnodes;
-        this.accessor = accessor;
         this.groupPadding = groupPadding;
         this.nodes = new ArrayList<>(originalnodes.size());
         for (int i = 0; i < originalnodes.size(); i++) {
@@ -141,7 +136,7 @@ public class GridRouter<T> {
             // create vertices at the intersections of nodes and lines
             this.nodes.forEach(v -> {
                 v.rect.lineIntersections(l.x1, l.y1, l.x2, l.y2).forEach(intersect -> {
-                    Vert p = new Vert(this.verts.size(), intersect.x, intersect.y, v, l);
+                    Vert p = new Vert(this.verts.size(), intersect.x, intersect.y, v);
                     this.verts.add(p);
                     l.verts.add(p);
                     v.ports.add(p);
@@ -611,85 +606,5 @@ public class GridRouter<T> {
             return !(i < pathPoints.size() - 1 && source.equals(pathPoints.get(i + 1).node) && source.equals(v.node)
                      || 0 < i && target.equals(v.node) && target.equals(pathPoints.get(i - 1).node));
         }).collect(Collectors.toCollection(GridPath::new));
-    }
-
-    public static RoutePath getRoutePath(final Point[][] route, final double cornerradius, final double arrowwidth,
-                                         final double arrowheight)
-    {
-        final RoutePath result = new RoutePath("M " + route[0][0].x + " " + route[0][0].y + " ", "");
-        if (1 < route.length) {
-            for (int i = 0; i < route.length; i++) {
-                final Point[] li = route[i];
-                double x = li[1].x, y = li[1].y;
-                double dx = x - li[0].x;
-                double dy = y - li[0].y;
-                if (i < route.length - 1) {
-                    if (0 < Math.abs(dx)) {
-                        x -= dx / Math.abs(dx) * cornerradius;
-                    } else {
-                        y -= dy / Math.abs(dy) * cornerradius;
-                    }
-                    result.routepath += "L " + x + " " + y + " ";
-                    final Point[] l = route[i + 1];
-                    final double x0 = l[0].x;
-                    final double y0 = l[0].y;
-                    final double x1 = l[1].x;
-                    final double y1 = l[1].y;
-                    dx = x1 - x0;
-                    dy = y1 - y0;
-                    final double angle = (0 > GridRouter.angleBetween2Lines(li, l)) ? 1 : 0;
-                    final double x2, y2;
-                    if (0 < Math.abs(dx)) {
-                        x2 = x0 + dx / Math.abs(dx) * cornerradius;
-                        y2 = y0;
-                    } else {
-                        x2 = x0;
-                        y2 = y0 + dy / Math.abs(dy) * cornerradius;
-                    }
-                    final double cx = Math.abs(x2 - x);
-                    final double cy = Math.abs(y2 - y);
-                    result.routepath += "A " + cx + " " + cy + " 0 0 " + angle + " " + x2 + " " + y2 + " ";
-                } else {
-                    final double[] arrowtip = new double[] {x, y};
-                    final double[] arrowcorner1, arrowcorner2;
-                    if (0 < Math.abs(dx)) {
-                        x -= dx / Math.abs(dx) * arrowheight;
-                        arrowcorner1 = new double[] {x, y + arrowwidth};
-                        arrowcorner2 = new double[] {x, y - arrowwidth};
-                    } else {
-                        y -= dy / Math.abs(dy) * arrowheight;
-                        arrowcorner1 = new double[] {x + arrowwidth, y};
-                        arrowcorner2 = new double[] {x - arrowwidth, y};
-                    }
-                    result.routepath += "L " + x + " " + y + " ";
-                    if (0 < arrowheight) {
-                        result.arrowpath = "M " + arrowtip[0] + " " + arrowtip[1] + " L " + arrowcorner1[0] + " " + arrowcorner1[1]
-                                           + " L " + arrowcorner2[0] + " " + arrowcorner2[1];
-                    }
-                }
-            }
-        } else {
-            final Point[] li = route[0];
-            double x = li[1].x, y = li[1].y;
-            final double dx = x - li[0].x;
-            final double dy = y - li[0].y;
-            final double[] arrowtip = new double[] {x, y};
-            final double[] arrowcorner1, arrowcorner2;
-            if (0 < Math.abs(dx)) {
-                x -= dx / Math.abs(dx) * arrowheight;
-                arrowcorner1 = new double[] {x, y + arrowwidth};
-                arrowcorner2 = new double[] {x, y - arrowwidth};
-            } else {
-                y -= dy / Math.abs(dy) * arrowheight;
-                arrowcorner1 = new double[] {x + arrowwidth, y};
-                arrowcorner2 = new double[] {x - arrowwidth, y};
-            }
-            result.routepath += "L " + x + " " + y + " ";
-            if (0 < arrowheight) {
-                result.arrowpath = "M " + arrowtip[0] + " " + arrowtip[1] + " L " + arrowcorner1[0] + " " + arrowcorner1[1]
-                                   + " L " + arrowcorner2[0] + " " + arrowcorner2[1];
-            }
-        }
-        return result;
     }
 }

@@ -261,7 +261,7 @@ public class Tests {
                 final Point p = new Point(nextInt(rand, width), nextInt(rand, height));
                 P.add(p);
             }
-            List<Point> h = Geom.ConvexHull(P);
+            List<Point> h = Geom.convexHull(P);
 
             for (int i = 2; i < h.size(); ++i) {
                 final Point p = h.get(i - 2), q = h.get(i - 1), r = h.get(i);

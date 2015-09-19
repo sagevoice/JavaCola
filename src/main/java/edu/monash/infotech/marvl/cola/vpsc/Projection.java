@@ -89,40 +89,6 @@ public class Projection {
                 c.equality);
     }
 
-    private void makeFeasible(final Constraint c) {
-        if (!this.avoidOverlaps) {
-            return;
-        }
-        final String axis, dim;
-        if ("x".equals(c.axis)) {
-            axis = "y";
-            dim = "height";
-        } else {
-            axis = "x";
-            dim = "width";
-        }
-        final GraphNode[] vs = c.offsets.stream().map(o -> this.nodes.get(o.node)).sorted((a, b) -> (int)Math.signum(a.get(axis) - b.get(axis)))
-                                .collect(Collectors.toList()).toArray(new GraphNode[c.offsets.size()]);
-        GraphNode p = null;
-        for (int i = 0; i < vs.length; i++) {
-            final GraphNode v = vs[i];
-            if (null != p) {
-                v.set(axis, p.get(axis) + p.get(dim) + 1);
-            }
-            p = v;
-        }
-    }
-
-    private void createAlignment(final Constraint c) {
-        Variable u = this.nodes.get(c.offsets.get(0).node).variable;
-        this.makeFeasible(c);
-        final List<Constraint> cs = "x".equals(c.axis) ? this.xConstraints : this.yConstraints;
-        c.offsets.subList(1, c.offsets.size()).forEach(o -> {
-            Variable v = this.nodes.get(o.node).variable;
-            cs.add(new Constraint(u, v, o.offset, true));
-        });
-    }
-
     private void createConstraints(final List<Constraint> constraints) {
         final Function<Constraint, Boolean> isSep = c -> null == c.type || "separation".equals(c.type);
         this.xConstraints = constraints.stream()
@@ -131,9 +97,6 @@ public class Projection {
         this.yConstraints = constraints.stream()
                                        .filter(c -> "y".equals(c.axis) && isSep.apply(c))
                                        .map(c -> this.createSeparation(c)).collect(Collectors.toList());
-        constraints.stream()
-                   .filter(c -> "alignment".equals(c.type))
-                   .forEach(c -> this.createAlignment(c));
     }
 
     private void setupVariablesAndBounds(final double[] x0, final double[] y0, final double[] desired,

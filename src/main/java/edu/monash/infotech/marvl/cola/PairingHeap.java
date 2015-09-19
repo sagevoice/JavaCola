@@ -16,7 +16,7 @@ public class PairingHeap<T> {
     }
 
     public String toString() {
-        String str = "";
+        StringBuilder builder = new StringBuilder();
         boolean needComma = false;
         for (int i = 0; i < this.subheaps.size(); ++i) {
             PairingHeap<T> subheap = this.subheaps.get(i);
@@ -25,15 +25,16 @@ public class PairingHeap<T> {
                 continue;
             }
             if (needComma) {
-                str += ",";
+                builder.append(",");
             }
-            str += subheap.toString();
+            builder.append(subheap.toString());
             needComma = true;
         }
-        if (!str.isEmpty()) {
-            str = "(" + str + ")";
+        if (0 < builder.length()) {
+            builder.insert(0, "(");
+            builder.append(")");
         }
-        return ((null != this.elem) ? this.elem.toString() : "") + str;
+        return ((null != this.elem) ? this.elem.toString() : "") + builder.toString();
     }
 
     public void forEach(final BiConsumer<T, PairingHeap<T>> f) {

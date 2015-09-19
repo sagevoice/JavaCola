@@ -156,8 +156,8 @@ public class ApiTests {
         };
         final Function<Void, double[]> reduceStress = (a) -> {
             d.computeDerivatives(d.x);
-            final double alpha = 2 * d.computeStepSize(d.g);
-            double f = 5;
+            final double alpha = 2.0 * d.computeStepSize(d.g);
+            double f = 5.0;
             takeDescentStep.accept(f * alpha);
             final double sOver = d.computeStress();
             takeDescentStep.accept(-f * alpha);

@@ -15,7 +15,6 @@ public class Constraint {
     public boolean      equality;
     public String       type;
     public String       axis;
-    public List<Offset> offsets;
 
     public Constraint(final Variable left, final Variable right, final double gap) {
         this(left, right, gap, false);

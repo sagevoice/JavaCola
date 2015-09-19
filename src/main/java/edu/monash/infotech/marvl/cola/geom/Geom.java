@@ -36,7 +36,7 @@ public class Geom {
      * @param S array of points
      * @return the convex hull as an array of points
      */
-    public static List<Point> ConvexHull(List<Point> S) {
+    public static List<Point> convexHull(List<Point> S) {
         Point[] P = S.stream().sorted((a, b) -> a.x != b.x ? (int)Math.signum(b.x - a.x) : (int)Math.signum(b.y - a.y)).toArray(
                 Point[]::new);
         int n = S.size(), i;
@@ -174,7 +174,7 @@ public class Geom {
                     return b;
                 }
             }
-            c = (int)Math.floor((a + b) / 2);        // midpoint of [a,b], and 0<c<n
+            c = (int)Math.floor((a + b) / 2.0);        // midpoint of [a,b], and 0<c<n
             dnC = below(P, V.get(c + 1), V.get(c));
             if (dnC && !above(P, V.get(c - 1), V.get(c))) {
                 return c;          // V[c] is the maximum tangent point
@@ -233,7 +233,7 @@ public class Geom {
                 }
             }
 
-            c = (int)Math.floor((a + b) / 2);        // midpoint of [a,b], and 0<c<n
+            c = (int)Math.floor((a + b) / 2.0);        // midpoint of [a,b], and 0<c<n
             dnC = below(P, V.get(c + 1), V.get(c));
             if (above(P, V.get(c - 1), V.get(c)) && !dnC) {
                 return c;          // V[c] is the minimum tangent point

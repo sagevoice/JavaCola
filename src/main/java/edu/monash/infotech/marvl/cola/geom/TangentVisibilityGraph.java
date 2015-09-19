@@ -14,7 +14,7 @@ public class TangentVisibilityGraph extends VisibilityGraph {
             final List<TVGPoint> p = P.get(i);
             for (int j = 0; j < p.size(); ++j) {
                 final TVGPoint pj = p.get(j);
-                VisibilityVertex vv = new VisibilityVertex(this.V.size(), i, j, pj);
+                VisibilityVertex vv = new VisibilityVertex(this.V.size(), pj);
                 this.V.add(vv);
                 if (0 < j) {
                     this.E.add(new VisibilityEdge(p.get(j - 1).vv, vv));
@@ -47,7 +47,7 @@ public class TangentVisibilityGraph extends VisibilityGraph {
 
     public VisibilityVertex addPoint(final TVGPoint p, final int i1) {
         final int n = this.P.size();
-        this.V.add(new VisibilityVertex(this.V.size(), n, 0, p));
+        this.V.add(new VisibilityVertex(this.V.size(), p));
         for (int i = 0; i < n; ++i) {
             if (i == i1) {
                 continue;

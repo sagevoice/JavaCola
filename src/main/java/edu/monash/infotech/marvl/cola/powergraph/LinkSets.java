@@ -45,8 +45,8 @@ public class LinkSets {
     }
 
     public void forAll(final BiConsumer<ModuleSet, Integer> f) {
-        for (final Integer linktype : this.sets.keySet()) {
-            f.accept(this.sets.get(linktype), linktype);
+        for (final Map.Entry<Integer, ModuleSet> entry : this.sets.entrySet()) {
+            f.accept(entry.getValue(), entry.getKey());
         }
     }
 

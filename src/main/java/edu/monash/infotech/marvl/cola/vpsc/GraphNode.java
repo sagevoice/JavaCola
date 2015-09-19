@@ -15,7 +15,6 @@ public class GraphNode extends Point {
     public int             index;
     public Group           parent;
 
-    public Rectangle       innerBounds;
     public int             id;
 
     public GraphNode() {

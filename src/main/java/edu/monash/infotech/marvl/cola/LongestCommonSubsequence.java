@@ -8,14 +8,11 @@ public class LongestCommonSubsequence<T> extends Match {
 
     public boolean reversed;
     public List<T> s;
-    public List<T> t;
 
     LongestCommonSubsequence(final List<T> s, final List<T> t) {
         super();
         //noinspection AssignmentToCollectionOrArrayFieldFromParameter
         this.s = s;
-        //noinspection AssignmentToCollectionOrArrayFieldFromParameter
-        this.t = t;
         final Match mf = findMatch(s, t);
         final List<T> tr = new ArrayList<>(t);
         Collections.reverse(tr);

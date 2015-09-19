@@ -6,7 +6,6 @@ public class Vert extends Point {
 
     public int             id;
     public NodeWrapper     node;
-    public GridLineSegment line;
 
     public Vert(final double x, final double y) {
         super(x, y);
@@ -17,13 +16,8 @@ public class Vert extends Point {
     }
 
     public Vert(final int id, final double x, final double y, final NodeWrapper node) {
-        this(id, x, y, node, null);
-    }
-
-    public Vert(final int id, final double x, final double y, final NodeWrapper node, final GridLineSegment line) {
         super(x, y);
         this.id = id;
         this.node = node;
-        this.line = line;
     }
 }

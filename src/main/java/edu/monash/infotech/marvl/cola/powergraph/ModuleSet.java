@@ -22,9 +22,9 @@ public class ModuleSet {
 
     private Map<Integer, Module> intersection(final Map<Integer, Module> m, final Map<Integer, Module> n) {
         final Map<Integer, Module> i = new HashMap<>();
-        for (final Integer v : m.keySet()) {
-            if (n.containsKey(v)) {
-                i.put(v, m.get(v));
+        for (final Map.Entry<Integer, Module> entry : m.entrySet()) {
+            if (n.containsKey(entry.getKey())) {
+                i.put(entry.getKey(), entry.getValue());
             }
         }
         return i;
@@ -53,8 +53,8 @@ public class ModuleSet {
     }
 
     public void forAll(final BiConsumer<Module, ValueHolder> f, final ValueHolder value) {
-        for (final Integer mid : this.table.keySet()) {
-            f.accept(this.table.get(mid), value);
+        for (final Map.Entry<Integer, Module> entry : this.table.entrySet()) {
+            f.accept(entry.getValue(), value);
         }
     }
 

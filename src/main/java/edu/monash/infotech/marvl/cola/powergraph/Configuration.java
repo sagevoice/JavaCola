@@ -17,14 +17,12 @@ public class Configuration<T> {
     public  List<ModuleSet>     roots;
     // remaining edge count
     public  int                 R;
-    private LinkTypeAccessor<T> linkAccessor;
 
     public Configuration(final int n, final List<T> edges, final LinkTypeAccessor<T> linkAccessor) {
         this(n, edges, linkAccessor, null);
     }
 
     public Configuration(final int n, final List<T> edges, final LinkTypeAccessor<T> linkAccessor, final Group rootGroup) {
-        this.linkAccessor = linkAccessor;
         this.modules = new ArrayList<>(n);
         this.roots = new ArrayList<>();
         if (null != rootGroup) {
@@ -101,10 +99,6 @@ public class Configuration<T> {
         this.roots.get(k).remove(b);
         this.roots.get(k).add(m);
         return m;
-    }
-
-    private List<Merge> rootMerges() {
-        return this.rootMerges(0);
     }
 
     private List<Merge> rootMerges(final int k) {

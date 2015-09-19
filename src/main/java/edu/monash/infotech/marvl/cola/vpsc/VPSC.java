@@ -34,23 +34,6 @@ public class VPSC {
         return g.bounds;
     }
 
-    public static void makeEdgeBetween(final Link link, final Rectangle source, final Rectangle target, final double ah) {
-        Point si = source.rayIntersection(target.cx(), target.cy());
-        if (null == si) {
-            si = new Point(source.cx(), source.cy());
-        }
-        Point ti = target.rayIntersection(source.cx(), source.cy());
-        if (null == ti) {
-            ti = new Point(target.cx(), target.cy());
-        }
-        final double dx = ti.x - si.x,
-                dy = ti.y - si.y,
-                l = Math.sqrt(dx * dx + dy * dy), al = l - ah;
-        link.sourceIntersection = si;
-        link.targetIntersection = ti;
-        link.arrowStart = new Point(si.x + al * dx / l, si.y + al * dy / l);
-    }
-
     public static Point makeEdgeTo(final Point s, final Rectangle target, final double ah) {
         Point ti = target.rayIntersection(s.x, s.y);
         if (null == ti) {
@@ -119,7 +102,7 @@ public class VPSC {
     }
 
 
-    public static xRect xRect = new xRect();
+    public static final xRect xRect = new xRect();
 
 
     private static class yRect implements RectAccessors {
@@ -156,7 +139,7 @@ public class VPSC {
     }
 
 
-    public static yRect yRect = new yRect();
+    public static final yRect yRect = new yRect();
 
     public static List<Constraint> generateGroupConstraints(final Group root, final RectAccessors f, final double minSep) {
         return generateGroupConstraints(root, f, minSep, false);

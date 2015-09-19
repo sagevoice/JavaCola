@@ -6,21 +6,21 @@ import edu.monash.infotech.marvl.cola.vpsc.GraphNode;
 import edu.monash.infotech.marvl.cola.vpsc.Projection;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /** Use cola to do a layout in 3D!! Yay. Pretty simple for the moment. */
 public class Layout3D {
 
-    public static final List<String> dims = Arrays.asList("x", "y", "z");
-    public static final int          k    = Layout3D.dims.size();
-    public double[][]       result;
-    public List<Constraint> constraints;
-    public List<Node3D>     nodes;
-    public List<Link3D>     links;
-    public double           idealLinkLength;
-    public boolean          useJaccardLinkLengths;
-    public Descent          descent;
+    public static final List<String> dims = Collections.unmodifiableList(Arrays.asList("x", "y", "z"));
+    public static final    int          k    = Layout3D.dims.size();
+    public double[][]   result;
+    public List<Node3D> nodes;
+    public List<Link3D> links;
+    public double       idealLinkLength;
+    public boolean      useJaccardLinkLengths;
+    public Descent      descent;
 
     Layout3D(final List<Node3D> nodes, final List<Link3D> links) {
         this(nodes, links, 1);
@@ -52,7 +52,7 @@ public class Layout3D {
         return l.actualLength(this.result);
     }
 
-    private class LinkAccessor implements LinkLengthAccessor<Link3D> {
+    private static class LinkAccessor implements LinkLengthAccessor<Link3D> {
 
         protected LinkAccessor() {
         }
@@ -102,13 +102,6 @@ public class Layout3D {
         this.descent = new Descent(this.result, D);
         this.descent.threshold = 1e-3;
         this.descent.G = G;
-        //let constraints = this.links.map(e=> <any>{
-        //    axis: 'y', left: e.source, right: e.target, gap: e.length*1.5
-        //});
-        if (null != this.constraints) {
-            final List<GraphNode> nodes2D = nodes.stream().collect(Collectors.toList());
-            this.descent.project = new Projection(nodes2D, null, null, this.constraints).projectFunctions();
-        }
 
         for (int i = 0; i < this.nodes.size(); i++) {
             final Node3D v = this.nodes.get(i);

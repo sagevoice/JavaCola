@@ -372,7 +372,7 @@ public class Layout {
         return null != this._linkType ? this._linkType.applyAsInt(link) : 0;
     }
 
-    private class LinkAccessor implements LinkLengthAccessor<Link>, LinkTypeAccessor<Link>, LinkSepAccessor<Link> {
+    private static class LinkAccessor implements LinkLengthAccessor<Link>, LinkTypeAccessor<Link>, LinkSepAccessor<Link> {
 
         private Layout layout;
 
@@ -691,7 +691,6 @@ public class Layout {
      * overlaps.
      */
     public void prepareEdgeRouting(final double nodeMargin) {
-        final int n = _nodes.size();
         final Stream<Point[]> stream = this._nodes.stream().map((v) -> {
             return v.bounds.inflate(-nodeMargin).vertices();
         });
@@ -703,58 +702,6 @@ public class Layout {
         });
         final List<List<TVGPoint>> P = stream2.collect(Collectors.toList());
         this._visibilityGraph = new TangentVisibilityGraph(P);
-    }
-
-    /**
-     * find a route avoiding node bounds for the given edge. assumes the visibility graph has been created (by prepareEdgeRouting method)
-     * and also assumes that nodes have an index property giving their position in the node array.  This index property is created by the
-     * start() method.
-     */
-    public List<Point> routeEdge(final Link edge, final Consumer<TangentVisibilityGraph> draw) {
-        final List<Point> lineData = new ArrayList<>();
-        final GraphNode source = (GraphNode)edge.source;
-        final GraphNode target = (GraphNode)edge.target;
-        //if (d.source.id === 10 && d.target.id === 11) {
-        //    debugger;
-        //}
-        final TangentVisibilityGraph vg2 = new TangentVisibilityGraph(this._visibilityGraph.P, new VisibilityGraph(this._visibilityGraph.V,
-                                                                                                                   this._visibilityGraph.E));
-        final TVGPoint port1 = new TVGPoint(source.x, source.y);
-        final TVGPoint port2 = new TVGPoint(target.x, target.y);
-        final VisibilityVertex start = vg2.addPoint(port1, source.index);
-        final VisibilityVertex end = vg2.addPoint(port2, target.index);
-        vg2.addEdgeIfVisible(port1, port2, source.index, target.index);
-        if (null != draw) {
-            draw.accept(vg2);
-        }
-        final Calculator<VisibilityEdge> spCalc = new Calculator<>(vg2.V.size(), vg2.E, e -> e.source.index, e -> e.target.index,
-                                                                   e -> e.length());
-        final double[] shortestPath = spCalc.PathFromNodeToNode(start.id, end.id);
-        if (1 == shortestPath.length || shortestPath.length == vg2.V.size()) {
-            VPSC.makeEdgeBetween(edge, source.innerBounds, target.innerBounds, 5);
-            lineData.add(new Point(edge.sourceIntersection.x, edge.sourceIntersection.y));
-            lineData.add(new Point(edge.arrowStart.x, edge.arrowStart.y));
-        } else {
-            int n = shortestPath.length - 2;
-            final TVGPoint p = vg2.V.get((int)shortestPath[n]).p;
-            final TVGPoint q = vg2.V.get((int)shortestPath[0]).p;
-            lineData.add(source.innerBounds.rayIntersection(p.x, p.y));
-            for (int i = n; i >= 0; --i) { lineData.add(vg2.V.get((int)shortestPath[i]).p); }
-            lineData.add(VPSC.makeEdgeTo(q, target.innerBounds, 5));
-        }
-        //lineData.forEach((v, i) => {
-        //    if (i > 0) {
-        //        var u = lineData[i - 1];
-        //        this._nodes.forEach(function (node) {
-        //            if (node.id === getSourceIndex(d) || node.id === getTargetIndex(d)) return;
-        //            var ints = node.innerBounds.lineIntersections(u.x, u.y, v.x, v.y);
-        //            if (ints.length > 0) {
-        //                debugger;
-        //            }
-        //        })
-        //    }
-        //})
-        return lineData;
     }
 
     /** The link source and target may be just a node index, or they may be references to nodes themselves. */
