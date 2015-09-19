@@ -1,6 +1,7 @@
-package edu.monash.infotech.marvl.cola.geom;
+package edu.monash.infotech.marvl.cola;
 
-import edu.monash.infotech.marvl.cola.PseudoRandom;
+import edu.monash.infotech.marvl.cola.geom.Geom;
+import edu.monash.infotech.marvl.cola.geom.TVGPoint;
 
 import java.util.ArrayList;
 import java.util.List;
