@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class Poly {
+public class PolyUtils {
 
     private static int nextInt(final PseudoRandom rand, final int r) {
         return (int)Math.round(rand.getNext() * r);

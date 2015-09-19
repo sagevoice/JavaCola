@@ -591,9 +591,9 @@ public class Tests {
         for (int tt = 0; tt < 100; tt++) {
             final PseudoRandom rand = new PseudoRandom(tt);
             final int n = 10;
-            final List<List<TVGPoint>> P = Poly.makeNonoverlappingPolys(rand, n);
-            final TVGPoint port1 = Poly.midPoint(P.get(8));
-            final TVGPoint port2 = Poly.midPoint(P.get(9));
+            final List<List<TVGPoint>> P = PolyUtils.makeNonoverlappingPolys(rand, n);
+            final TVGPoint port1 = PolyUtils.midPoint(P.get(8));
+            final TVGPoint port2 = PolyUtils.midPoint(P.get(9));
             final TangentVisibilityGraph g = new TangentVisibilityGraph(P);
             final VisibilityVertex start = g.addPoint(port1, 8);
             final VisibilityVertex end = g.addPoint(port2, 9);
@@ -615,7 +615,7 @@ public class Tests {
         final List<Point> pnt = Arrays.asList(new Point(0, 0));
         final BiTangents t1 = Geom.tangents(pnt, rect);
         for (int j = 0; j < 100; j++) {
-            final List<TVGPoint> A = Poly.makePoly(rand), B = Poly.makePoly(rand);
+            final List<TVGPoint> A = PolyUtils.makePoly(rand), B = PolyUtils.makePoly(rand);
             B.forEach((p) -> { p.x += 11; });
             //if (j !== 207) continue;
             final BiTangents t = Geom.tangents(A, B);
