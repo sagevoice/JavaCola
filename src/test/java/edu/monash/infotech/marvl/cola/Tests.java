@@ -764,28 +764,28 @@ public class Tests {
                           + " - if this consistently fails then maybe we should switch to typed arrays");
     }
 
-   /*
     @Test(description="priority queue test")
     public void priorityQueueTest() {
-        var q = new PriorityQueue((a, b) -> { return a <= b; });
-        q.push(42, 5, 23, 5, Math.PI);
-        var u = Math.PI, v;
-        strictEqual(u, q.top());
-        var cnt = 0;
-        while ((v = q.pop()) !== null) {
+        PriorityQueue<Double> q = new PriorityQueue<>((a, b) -> { return a <= b; });
+        q.push(42.0, 5.0, 23.0, 5.0, Math.PI);
+        double u = Math.PI;
+        Double v;
+        Assert.assertEquals(u, q.top());
+        int cnt = 0;
+        while ((v = q.pop()) != null) {
             Assert.assertTrue(u <= v);
             u = v;
             ++cnt;
         }
         Assert.assertEquals(cnt, 5);
-        q.push(42, 5, 23, 5, Math.PI);
-        var k = q.push(13);
-        strictEqual(Math.PI, q.top());
-        q.reduceKey(k, 2);
+        q.push(42.0, 5.0, 23.0, 5.0, Math.PI);
+        PairingHeap<Double> k = q.push(13.0);
+        Assert.assertEquals(Math.PI, q.top());
+        q.reduceKey(k, 2.0);
         u = q.top();
-        strictEqual(u, 2);
+        Assert.assertEquals(u, Double.valueOf(2));
         cnt = 0;
-        while ((v = q.pop()) !== null) {
+        while ((v = q.pop()) != null) {
             Assert.assertTrue(u <= v);
             u = v;
             ++cnt;
@@ -793,6 +793,7 @@ public class Tests {
         Assert.assertEquals(cnt, 6);
     }
 
+    /*
     @Test(description="dijkstra")
     public void dijkstraTest() {
         // 0  4-3
