@@ -20,11 +20,11 @@ public class Rectangle {
     }
 
     public double cx() {
-        return (this.x + this.X) / 2;
+        return (this.x + this.X) / 2.0;
     }
 
     public double cy() {
-        return (this.y + this.Y) / 2;
+        return (this.y + this.Y) / 2.0;
     }
 
     public double overlapX(final Rectangle r) {

@@ -10,8 +10,8 @@ import edu.monash.infotech.marvl.cola.powergraph.Module;
 import edu.monash.infotech.marvl.cola.powergraph.PowerEdge;
 import edu.monash.infotech.marvl.cola.shortestpaths.Calculator;
 import edu.monash.infotech.marvl.cola.vpsc.*;
-
 import edu.monash.infotech.marvl.cola.vpsc.Iterator;
+
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 import org.testng.annotations.*;
@@ -31,10 +31,6 @@ public class Tests {
     private double nodeDistance(final GraphNode u, final GraphNode v) {
         final double dx = u.x - v.x, dy = u.y - v.y;
         return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    private boolean approxEquals(final double actual, final double expected, final double threshold) {
-        return Math.abs(actual - expected) <= threshold;
     }
 
     private List<Link> mapJsonArrayToLinkList(final List<Map<String, Object>> jsonArray) {
@@ -201,12 +197,11 @@ public class Tests {
 
     @Test(description = "group")
     public void groupTest() {
-        LayoutAdaptor d3cola = CoLa.adaptor();
+        final LayoutAdaptor d3cola = CoLa.adaptor();
 
         final ToDoubleFunction<Link> length = (l) -> {
-            return ("2-3").equals(d3cola.linkId(l)) ? 2 : 1;
+            return ("2-3").equals(Layout.linkId(l)) ? 2.0 : 1.0;
         };
-        final List<GraphNode> nodes = new ArrayList<>();
         final GraphNode u = new GraphNode(-5, 0, 10, 10);
         final GraphNode v = new GraphNode(5, 0, 10, 10);
         final Group g = new Group(10, Arrays.asList(new GraphNode(0)));
@@ -471,7 +466,6 @@ public class Tests {
         private double Y;
     }
 
-
     public class TetrisNode {
 
         public int           id;
@@ -479,21 +473,6 @@ public class Tests {
         public TetrisBounds  bounds;
         public List<Integer> children;
     }
-
-
-    public class TetrisEdge {
-
-        public int source;
-        public int target;
-    }
-
-
-    public class TetrisGraph {
-
-        public List<TetrisNode> nodes;
-        public List<TetrisEdge> edges;
-    }
-
 
     public class TetrisNodeAccessor implements NodeAccessor<TetrisNode> {
 
@@ -938,14 +917,13 @@ public class Tests {
         Assert.assertEquals(cs.size(), 0);
     }
 
-        /*
-    private int overlaps(final Rectangle[] rs) {
-        var cnt = 0;
-        for (var i = 0, n = rs.length; i < n - 1; ++i) {
-            var r1 = rs[i];
-            for (var j = i + 1; j < n; ++j) {
-                var r2 = rs[j];
-                if (r1.overlapX(r2) > 0 && r1.overlapY(r2) > 0) {
+    private int overlaps(final List<Rectangle> rs) {
+        int cnt = 0;
+        for (int i = 0, n = rs.size(); i < n - 1; ++i) {
+            final Rectangle r1 = rs.get(i);
+            for (int j = i + 1; j < n; ++j) {
+                final Rectangle r2 = rs.get(j);
+                if (0 < r1.overlapX(r2) && 0 < r1.overlapY(r2)) {
                     cnt++;
                 }
             }
@@ -953,59 +931,64 @@ public class Tests {
         return cnt;
     }
 
-    @Test(description="cola.vpsc.removeOverlaps")
+    @Test(description = "cola.vpsc.removeOverlaps")
     public void removeOverlapsTest() {
-        var rs = [
-            new Rectangle(0, 4, 0, 4),
-            new Rectangle(3, 5, 1, 2),
-            new Rectangle(1, 3, 3, 5)
-        ];
+        List<Rectangle> rs = Arrays.asList(
+                new Rectangle(0, 4, 0, 4),
+                new Rectangle(3, 5, 1, 2),
+                new Rectangle(1, 3, 3, 5)
+        );
         Assert.assertEquals(overlaps(rs), 2);
         VPSC.removeOverlaps(rs);
         Assert.assertEquals(overlaps(rs), 0);
-        Assert.assertEquals(rs[1].y, 1);
-        Assert.assertEquals(rs[1].Y, 2);
+        Assert.assertEquals(rs.get(1).y, 1.0);
+        Assert.assertEquals(rs.get(1).Y, 2.0);
 
-        rs = [
-            new Rectangle(148.314,303.923,94.4755,161.84969999999998),
-            new Rectangle(251.725,326.6396,20.0193,69.68379999999999),
-            new Rectangle(201.235,263.6349,117.221,236.923),
-            new Rectangle(127.445,193.7047,46.5891,186.5991),
-            new Rectangle(194.259,285.7201,204.182,259.13239999999996)
-        ];
+        rs = Arrays.asList(
+                new Rectangle(148.314, 303.923, 94.4755, 161.84969999999998),
+                new Rectangle(251.725, 326.6396, 20.0193, 69.68379999999999),
+                new Rectangle(201.235, 263.6349, 117.221, 236.923),
+                new Rectangle(127.445, 193.7047, 46.5891, 186.5991),
+                new Rectangle(194.259, 285.7201, 204.182, 259.13239999999996)
+        );
         VPSC.removeOverlaps(rs);
         Assert.assertEquals(overlaps(rs), 0);
     }
 
-    @Test(description="packing")
+    @Test(description = "packing")
     public void packingTest() {
-        var nodes = []
-        for (var i = 0; i < 9; i++) { nodes.push({width: 10, height: 10}) }
-        CoLa.adaptor().nodes(nodes).start();
-        var check = function (aspectRatioThreshold) {
-            var dim = nodes.reduce(function (p, v) {
-                return {
-                    x: Math.min(v.x - v.width / 2, p.x),
-                    y: Math.min(v.y - v.height / 2, p.y),
-                    X: Math.max(v.x + v.width / 2, p.X),
-                    Y: Math.max(v.y + v.height / 2, p.Y)
-                };
-            }, { x: Double.POSITIVE_INFINITY, X: Double.NEGATIVE_INFINITY, y: Double.POSITIVE_INFINITY, Y: Double.NEGATIVE_INFINITY });
-            var width = dim.X - dim.x, height = dim.Y - dim.y;
-            Assert.assertTrue(Math.abs(width / height - 1) < aspectRatioThreshold);
+        final List<GraphNode> nodes = new ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            nodes.add(new GraphNode(10, 10));
         }
-        check(0.001);
+        CoLa.adaptor().nodes(nodes).start();
+        Consumer<Double> check = (aspectRatioThreshold) -> {
+            final Rectangle dim = new Rectangle(Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
+                                                Double.NEGATIVE_INFINITY);
+            for (final GraphNode v : nodes) {
+                dim.x = Math.min(v.x - v.width / 2.0, dim.x);
+                dim.y = Math.min(v.y - v.height / 2.0, dim.y);
+                dim.X = Math.max(v.x + v.width / 2.0, dim.X);
+                dim.Y = Math.max(v.y + v.height / 2.0, dim.Y);
+            }
+            final double width = dim.X - dim.x, height = dim.Y - dim.y;
+            Assert.assertTrue(Math.abs(width / height - 1) < aspectRatioThreshold);
+        };
+        check.accept(0.001);
 
         // regression test, used to cause infinite loop
-        nodes = [{ width: 24, height: 35 }, { width: 24, height: 35 }, { width: 32, height: 35 }];
+        nodes.clear();
+        nodes.addAll(Arrays.asList(new GraphNode(24, 35), new GraphNode(24, 35), new GraphNode(32, 35)));
         CoLa.adaptor().nodes(nodes).start();
-        check(0.3);
+        check.accept(0.3);
 
         // for some reason the first rectangle is offset by the following - no assertion for this yet.
-        PseudoRandom rand = new PseudoRandom(51);
-        for (var i = 0; i < 19; i++) { nodes.push({ width: rand.getNextBetween(5, 30), height: rand.getNextBetween(5, 30) }) }
+        final PseudoRandom rand = new PseudoRandom(51);
+        nodes.clear();
+        for (int i = 0; i < 19; i++) {
+            nodes.add(new GraphNode(rand.getNextBetween(5, 30), rand.getNextBetween(5, 30)));
+        }
         CoLa.adaptor().nodes(nodes).avoidOverlaps(false).start();
-        check(0.1);
+        check.accept(0.1);
     }
-    */
 }

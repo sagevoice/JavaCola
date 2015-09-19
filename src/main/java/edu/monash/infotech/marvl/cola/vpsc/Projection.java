@@ -147,7 +147,7 @@ public class Projection {
             } else {
                 v.variable.weight = 1;
             }
-            final double w = v.width / 2, h = v.height / 2;
+            final double w = v.width / 2.0, h = v.height / 2.0;
             final double ix = x0[i], iy = y0[i];
             v.bounds = new Rectangle(ix - w, ix + w, iy - h, iy + h);
         }

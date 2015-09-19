@@ -73,12 +73,15 @@ public class VPSC {
             // open must come before close
             return -1;
         }
+        if (b.isOpen && !a.isOpen) {
+            return 1;
+        }
         return 0;
     }
 
     public static RBTree<Node> makeRBTree() {
         //noinspection NumericCastThatLosesPrecision
-        return new RBTree<>((a, b) -> (int)(a.pos - b.pos));
+        return new RBTree<>((a, b) -> (int)Math.signum(a.pos - b.pos));
     }
 
 
@@ -251,7 +254,7 @@ public class VPSC {
                 // close event
                 scanline.remove(v);
                 final BiConsumer<Node, Node> makeConstraint = (l, r) -> {
-                    final double sep = (rect.getSize(l.r) + rect.getSize(r.r)) / 2 + minSep;
+                    final double sep = (rect.getSize(l.r) + rect.getSize(r.r)) / 2.0 + minSep;
                     cs.add(new Constraint(l.v, r.v, sep));
                 };
                 final Consumer<BiConsumer<Node, Node>> reverseVisitNeighbours = (mkcon) -> {

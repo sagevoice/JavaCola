@@ -35,7 +35,10 @@ public class GraphNode extends Point {
         this.height = height;
     }
 
-
+    public GraphNode(final double width, final double height) {
+        this.width = width;
+        this.height = height;
+    }
 
     @Override
     public double get(final String key) {

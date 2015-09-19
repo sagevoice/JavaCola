@@ -342,7 +342,7 @@ public class Descent {
         double alpha = this.computeStepSize(this.g);
         this.stepAndProject(x0, r, this.g, alpha);
         if (null != this.project) {
-            this.matrixApply((i, j) -> this.e[i][j] = x0[i][j] - r[i][j]);
+            this.matrixApply((i, j) -> {this.e[i][j] = x0[i][j] - r[i][j];});
             double beta = this.computeStepSize(this.e);
             beta = Math.max(0.2, Math.min(beta, 1));
             this.stepAndProject(x0, r, this.e, beta);
